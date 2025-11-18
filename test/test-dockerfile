@@ -1,5 +1,0 @@
-FROM alpine:3.21
-
-RUN echo "Hello from Docker!"
-
-CMD ["echo", "Container is running!"]
