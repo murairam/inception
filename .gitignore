@@ -1,3 +1,36 @@
-.env
+# Environment variables with sensitive data
 srcs/.env
+.env
+
+# Secrets directory
 secrets/
+*.txt
+
+# Data directories (Docker volumes)
+data/
+/home/*/data/
+
+# Docker-related
+*.log
+
+# SSL certificates and keys
+*.pem
+*.key
+*.crt
+*.csr
+
+# MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.bak
