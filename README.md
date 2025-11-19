@@ -54,6 +54,13 @@ Plugins
 Uploaded media (images, videos)
 wp-config.php (WordPress configuration)
 
+what goes in a dockerfile?
+FROM - base image
+RUN - execute commands during build
+COPY - copy files into image
+EXPOSE - document which ports container uses
+CMD - what runs when container starts
+ENTRYPOINT - alternative to CMD
 ---
 resources:
  - https://docs.docker.com/compose/
