@@ -2,7 +2,7 @@ inception
 
 ---
 
-what is docker?
+what is SSL/TLS?
 
 SSL - secure sockets layer, encriptions based interner security protocol. it is the predecessor for TLS inscription that is used today.
 A website that has SSL/TLS has "HTTPS" in url, instead of the HTTP
@@ -16,6 +16,43 @@ short description. SSL encrypts all data that is between user and web server to 
 
 TLS - transport layer security
 thw two are closely related, name change was to signify the change in ownership
+
+why tail -f and sleep infinity are prohibited?
+
+tail -f - continuously reads the end of a file (never exits)
+sleep infinity - sleeps forever (never exits)
+
+What is PID 1?
+
+every process in linux gets a process id - the first one is usually allocated to systemd or init, which manage all other processes
+in my docker container - PID 1 will be for the main command, it will be the parent of everything in that container. so when PID1 stops, the container stops.
+
+
+how the three containers in inception are connected
+```
+User (browser)
+    ↓ HTTPS (port 443)
+NGINX container
+    ↓ port 9000 (internal network)
+WordPress+PHP-FPM container
+    ↓ port 3306 (internal network)
+MariaDB container
+```
+
+What the volumes contain:
+Volume 1 - MariaDB (~/data/mariadb):
+
+Database files (actual MySQL/MariaDB data)
+WordPress posts, pages, users, settings
+All stored as database tables
+
+Volume 2 - WordPress (~/data/wordpress):
+
+WordPress PHP files
+Themes
+Plugins
+Uploaded media (images, videos)
+wp-config.php (WordPress configuration)
 
 ---
 resources:
