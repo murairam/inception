@@ -1,7 +1,23 @@
 inception
 
---- 
+---
 
+what is docker?
+
+SSL - secure sockets layer, encriptions based interner security protocol. it is the predecessor for TLS inscription that is used today.
+A website that has SSL/TLS has "HTTPS" in url, instead of the HTTP
+works by
+* encrypting data that is transmitted
+* checks that the two communicating devices are who they claim to be by initiating a handshake between them
+* signs the data to make sure it is not tampered with before it reaches the recipient
+
+in 1999 SSL was updated to TLS
+short description. SSL encrypts all data that is between user and web server to ensure that all data is hidden for outsiders (for example credit card info)
+
+TLS - transport layer security
+thw two are closely related, name change was to signify the change in ownership
+
+---
 resources:
  - https://docs.docker.com/compose/
  - https://medium.com/@boutnaruthe-linux-process-journey-pid-1-init-60765a069f17
@@ -16,4 +32,7 @@ resources:
  - https://medium.com/@afatir.ahmedfatir/unveiling-42-the-network-inception-a-dive-into-docker-and-docker-compose-cfda98d9f4ac
  - https://www.youtube.com/watch?v=sK5i-N34im8
  - https://medium.com/@weidagang/linux-beyond-the-basics-cgroups-f157d93bd755
- 
+ - https://nginx.org/en/docs/beginners_guide.html
+ - https://www.cloudflare.com/en-gb/learning/ssl/what-is-ssl/
+
+
