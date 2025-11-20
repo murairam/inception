@@ -14,6 +14,6 @@ EXPOSE 3306
 
 ENTRYPOINT [ "docker-entrypoint.sh" ]
 
-CMD [ "mysqld", "--user=mysql" ]
+CMD [ "mariadbd", "--user=mysql" ]
 
 

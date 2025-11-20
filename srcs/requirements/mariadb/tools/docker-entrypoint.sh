@@ -9,30 +9,64 @@ if [ ! -d "/var/lib/mysql/mysql" ]; then
 	DB_PWD=$(cat /run/secrets/db_password)
 
 	# Read from ENVIRONMENT (names)
-	# These come from .env via docker-compose
 	DB_NAME=${MYSQL_DATABASE}
 	DB_USER=${MYSQL_USER}
+
+	echo "Creating database: ${DB_NAME}"
+	echo "Creating user: ${DB_USER}"
 
 	# Initialize database
 	mariadb-install-db --user=mysql --datadir=/var/lib/mysql
 
-	# Create init SQL
-	cat > /tmp/init.sql << EOF
-ALTER USER 'root'@'localhost' IDENTIFIED BY '${DB_ROOT_PWD}';
-DELETE FROM mysql.user WHERE User='';
-DROP DATABASE IF EXISTS test;
-DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';
+	# Start temporary MariaDB in background
+	mariadbd --user=mysql --datadir=/var/lib/mysql --skip-networking &
+	pid="$!"
 
-CREATE DATABASE IF NOT EXISTS ${DB_NAME};
-CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${DB_PWD}';
-GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'%';
-FLUSH PRIVILEGES;
-EOF
+	# Wait for MariaDB to start
+	echo "Waiting for MariaDB to start..."
+	for i in {30..0}; do
+		if mariadb -u root --skip-password -e 'SELECT 1' &>/dev/null; then
+			break
+		fi
+		sleep 1
+	done
 
-	# Run init script
-	mysqld --user=mysql --bootstrap < /tmp/init.sql
-	rm -f /tmp/init.sql
+	# Run initialization SQL
+	echo "Running initialization script..."
+	mariadb -u root <<-EOSQL
+		-- Secure the installation
+		DELETE FROM mysql.user WHERE User='';
+		DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
+		DROP DATABASE IF EXISTS test;
+		DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';
+
+		-- Set root password
+		ALTER USER 'root'@'localhost' IDENTIFIED BY '${DB_ROOT_PWD}';
+
+		-- Create database
+		CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;
+
+		-- Create user
+		CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${DB_PWD}';
+
+		-- Grant privileges
+		GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'%';
+
+		-- Flush privileges
+		FLUSH PRIVILEGES;
+	EOSQL
+
+	# Stop temporary MariaDB
+	if ! kill -s TERM "$pid" || ! wait "$pid"; then
+		echo >&2 'MariaDB init process failed.'
+		exit 1
+	fi
+
+	echo "Database initialization complete!"
+else
+	echo "Database already initialized, skipping..."
 fi
 
 # Start MariaDB as PID 1
+echo "Starting MariaDB..."
 exec "$@"

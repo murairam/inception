@@ -61,6 +61,34 @@ COPY - copy files into image
 EXPOSE - document which ports container uses
 CMD - what runs when container starts
 ENTRYPOINT - alternative to CMD
+
+What is Alpine?
+Alpine is a tiny Linux distribution designed for containers:
+
+Only ~5MB in size (vs Debian's ~100MB)
+Uses apk package manager (not apt)
+Security-focused
+Perfect for Docker because it's lightweight
+
+mariadb
+/var/lib/mysql - Database files
+	This is where MariaDB stores:
+
+	All database tables
+	User data
+	WordPress posts/pages
+	Everything persistent
+
+	Without it: MariaDB can't store any data!
+
+/run/mysqld - Socket file
+	This is where MariaDB creates:
+
+	mysqld.sock - a special file for local connections
+	Process ID file
+
+	Think of it like a "mailbox" where programs talk to MariaDB locally.
+	Without it: MariaDB can't create the socket → can't start!
 ---
 resources:
  - https://docs.docker.com/compose/
@@ -78,5 +106,7 @@ resources:
  - https://medium.com/@weidagang/linux-beyond-the-basics-cgroups-f157d93bd755
  - https://nginx.org/en/docs/beginners_guide.html
  - https://www.cloudflare.com/en-gb/learning/ssl/what-is-ssl/
+ - https://hoop.dev/blog/what-alpine-debian-actually-does-and-when-to-use-it/
+
 
 
