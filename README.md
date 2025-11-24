@@ -62,6 +62,10 @@ EXPOSE - document which ports container uses
 CMD - what runs when container starts
 ENTRYPOINT - alternative to CMD
 
+ENTRYPOINT = "python"      (the program)
+CMD = ["script.py"]        (what to run)
+Together: python script.py
+
 What is Alpine?
 Alpine is a tiny Linux distribution designed for containers:
 

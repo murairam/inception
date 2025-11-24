@@ -1,5 +1,5 @@
 #!/bin/sh
-set -e
+set -e	# "Exit immediately if any command fails"
 
 if [ ! -d "/var/lib/mysql/mysql" ]; then
 	echo "Initializing database..."
