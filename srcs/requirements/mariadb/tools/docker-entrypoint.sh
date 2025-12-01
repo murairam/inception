@@ -19,7 +19,7 @@ if [ ! -d "/var/lib/mysql/mysql" ]; then
 	mariadb-install-db --user=mysql --datadir=/var/lib/mysql
 
 	# Start temporary MariaDB in background
-	mariadbd --user=mysql --datadir=/var/lib/mysql --skip-networking &
+	mariadbd --user=mysql --datadir=/var/lib/mysql --bind-address=0.0.0.0 --port=3306 &
 	pid="$!"
 
 	# Wait for MariaDB to start

@@ -6,7 +6,7 @@ RUN mkdir -p /var/lib/mysql /run/mysqld
 
 RUN chown -R mysql:mysql /var/lib/mysql /run/mysqld
 
-COPY conf/my.cnf /etc/my.cnf.d/custom.cnf
+COPY conf/my.cnf /etc/my.cnf
 
 COPY tools/docker-entrypoint.sh /usr/local/bin/
 

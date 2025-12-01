@@ -20,7 +20,7 @@ if [ ! -f /var/www/html/wp-config.php ]; then
 	wp config create \
 		--dbname="${MYSQL_DATABASE}" \
 		--dbuser="${MYSQL_USER}" \
-		--dbpass="{$MYSQL_PASSWORD}" \
+		--dbpass="${MYSQL_PASSWORD}" \
 		--dbhost=mariadb \
 		--allow-root
 
@@ -28,16 +28,16 @@ if [ ! -f /var/www/html/wp-config.php ]; then
 		--url="${DOMAIN_NAME}" \
 		--title="Inception" \
 		--admin_user="${WP_ADMIN_USER}" \
-		--admin-password="${WP_ADMIN_PASSWORD}" \
+		--admin_password="${WP_ADMIN_PASSWORD}" \
 		--admin_email="${WP_ADMIN_EMAIL}" \
 		--skip-email \
 		--allow-root
 
 	wp user create \
 		"${WP_USER}" \
-		"${WP_USEP_EMAIL}" \
+		"${WP_USER_EMAIL}" \
 		--role=author \
-		--user-pass="${WP_USER_PASSWORD}" \
+		--user_pass="${WP_USER_PASSWORD}" \
 		--allow-root
 
 	echo "WordPress configuration complete!"

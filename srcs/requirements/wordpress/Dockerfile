@@ -15,7 +15,8 @@ RUN apk update && apk add --no-cache \
 	php83-zip \
 	php83-phar \
 	curl \
-	bash
+	bash \
+	mariadb-client
 
 RUN mkdir -p /var/www/html /run/php83
 
