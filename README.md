@@ -215,6 +215,88 @@ location ~ \.php$ {
 - `fastcgi_index index.php` - Default PHP file
 - `include fastcgi_params;` - Standard FastCGI parameters (comes with NGINX)
 - `fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;` - Tells PHP-FPM which file to execute
+
+Wordpress
+a cms, content management system
+no code visual website builder, or wordpress.org for without hosting
+
+what is fastgci?
+service, helps to handle and run php
+
+MariaDB: Runs as mysql user (created by mariadb package)
+PHP-FPM: Runs as nobody user (built-in Alpine user with minimal permissions)
+
+[www]
+Section header - Names this PHP-FPM pool "www" (you can have multiple pools, but we only need one)
+
+iniuser = nobody
+group = nobody
+Security - PHP-FPM worker processes run as the nobody user/group (not root). This matches the ownership of /var/www/html.
+
+inilisten = 9000
+Critical! - PHP-FPM listens on port 9000. This is where NGINX forwards PHP requests to (fastcgi_pass wordpress:9000;)
+Alternative: Could use a Unix socket instead of TCP port, but port 9000 is simpler for Docker networking.
+
+inilisten.owner = nobody
+listen.group = nobody
+Socket permissions - If using Unix socket, set ownership. Not strictly needed for TCP port 9000, but doesn't hurt.
+
+inipm = dynamic
+Process Manager mode - dynamic means PHP-FPM automatically adjusts the number of child processes based on demand.
+Options:
+
+static - Fixed number of workers
+dynamic - Adjusts based on load (best for varying traffic)
+ondemand - Spawns workers only when needed
+
+
+inipm.max_children = 5
+Maximum workers - At most 5 PHP-FPM processes can run simultaneously. For a small project, 5 is plenty.
+
+inipm.start_servers = 2
+Initial workers - Start with 2 PHP-FPM processes when container launches.
+
+inipm.min_spare_servers = 1
+pm.max_spare_servers = 3
+Spare workers - Keep between 1-3 idle processes ready to handle requests. If all workers are busy, spawn more (up to max_children).
+Think of it like: always keep 1-3 employees on standby, hire more if needed (max 5 total).
+
+iniclear_env = no
+Environment variables - no means PHP-FPM passes environment variables to PHP scripts.
+Why important? WordPress needs env vars like MYSQL_DATABASE, MYSQL_USER, etc. from docker-compose!
+Default is yes (clears env vars for security), but we need them for configuration.
+
+Dockerfile
+-F flag: Runs PHP-FPM in foreground (like nginx -g "daemon off;")
+
+entrypoint script
+Step 1: Wait for Database
+
+Keep trying to connect to MariaDB
+Sleep 3 seconds between attempts
+Continue only when MariaDB responds
+
+Step 2: Check if Already Set Up
+
+Look for wp-config.php file
+If exists → skip setup (already done)
+If missing → do first-time setup
+
+Step 3: First-Time Setup (if needed)
+
+Create wp-config.php with database credentials
+Install WordPress with admin user
+Create second user (regular author)
+Mark setup as complete
+
+Step 4: Start PHP-FPM
+
+Hand control to PHP-FPM process
+PHP-FPM runs as PID 1, keeps container alive
+
+
+In one sentence: Wait for database → configure WordPress if needed → start PHP-FPM.
+
 ---
 
 ## Resources
@@ -238,14 +320,17 @@ location ~ \.php$ {
 - [Unveiling 42 Network: Inception - A Dive into Docker and Docker Compose](https://medium.com/@afatir.ahmedfatir/unveiling-42-the-network-inception-a-dive-into-docker-and-docker-compose-cfda98d9f4ac)
 
 **Videos:**
-- [Docker Tutorial](https://www.youtube.com/watch?v=pg19Z8LL06w)
-- [Docker Explained](https://www.youtube.com/watch?v=DQdB7wFEygo)
-- [Docker Compose Tutorial](https://www.youtube.com/watch?v=iInUBOVeBCc)
-- [Docker Networking](https://www.youtube.com/watch?v=sK5i-N34im8)
-- [Docker Containers and Images](https://www.youtube.com/watch?v=JKxlsvZXG7c)
-- [Docker Deep Dive](https://www.youtube.com/watch?v=4NB0NDtOwIQ)
+- [docker crash course](https://www.youtube.com/watch?v=pg19Z8LL06w)
+- [rapid docker tutorial](https://www.youtube.com/watch?v=DQdB7wFEygo)
+- [tutorial about NGINX](https://www.youtube.com/watch?v=iInUBOVeBCc)
+- [Docker lecture about what containers are masde from (very good lecture)](https://www.youtube.com/watch?v=sK5i-N34im8)
+- [NGINX explained in 100 seconds](https://www.youtube.com/watch?v=JKxlsvZXG7c)
+- [about proxy vs reverse proxy](https://www.youtube.com/watch?v=4NB0NDtOwIQ)
+- [fastcgi crash course](https://www.youtube.com/watch?v=hEXBgQ71rvE)
+-
 
 
+request processing https://nginx.org/en/docs/http/request_processing.html
 
 
 

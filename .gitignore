@@ -3,8 +3,8 @@ srcs/.env
 .env
 
 # Secrets directory
-secrets/
-*.txt
+secrets/*.txt
+
 
 # Data directories (Docker volumes)
 data/
