@@ -297,6 +297,33 @@ PHP-FPM runs as PID 1, keeps container alive
 
 In one sentence: Wait for database → configure WordPress if needed → start PHP-FPM.
 
+MAKEFILE
+
+How to Use It
+Start your project:
+bashmake
+(This runs make all which builds and starts everything)
+Stop containers:
+bashmake down
+View logs:
+bashmake logs
+Clean everything and rebuild:
+bashmake re
+Full cleanup (remove data too):
+bashmake fclean
+
+What Each Target Does
+
+all - Default, builds and starts
+build - Creates the data directories and builds Docker images
+up - Starts containers in detached mode (-d)
+down - Stops containers
+clean - Stops and removes containers/networks
+fclean - Full cleanup including volumes and data directories
+re - Clean everything and rebuild from scratch
+logs - Follow logs in real-time
+ps - Show running containers
+
 ---
 
 ## Resources
