@@ -51,6 +51,15 @@ services:
       - WP_USER_EMAIL=${WP_USER_EMAIL}
     restart: always
 
+  static-site:
+    container_name: static-site
+    build: ./requirements/bonus/static-site
+    ports:
+      - "8081:80"
+    networks:
+      - inception_network
+    restart: always
+
 networks:
   inception_network:
     driver: bridge
@@ -62,7 +71,7 @@ volumes:
       type: none
       o: bind
       device: ~/data/mariadb
-      
+
   wordpress_data:
     driver: local
     driver_opts:

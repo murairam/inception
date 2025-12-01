@@ -839,6 +839,10 @@ docker exec -it mariadb mariadb -u wpuser -p
 
 **Additional Resources:**
 - [NGINX Request Processing](https://nginx.org/en/docs/http/request_processing.html)
+https://github.com/veggiemonk/awesome-docker
+https://github.com/awesome-selfhosted/awesome-selfhosted
+
+
 
 ---
 

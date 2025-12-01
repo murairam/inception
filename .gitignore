@@ -19,6 +19,8 @@ data/
 *.crt
 *.csr
 
+en.subject.pdf
+
 # MacOS
 .DS_Store
 .AppleDouble
