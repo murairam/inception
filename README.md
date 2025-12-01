@@ -93,6 +93,104 @@ mariadb
 
 	Think of it like a "mailbox" where programs talk to MariaDB locally.
 	Without it: MariaDB can't create the socket → can't start!
+
+NGINX
+
+--no-cache tells apk to not sore package cache files after installation
+
+ssl generation
+req -x509 - Create a self-signed certificate
+-nodes - No password for the private key
+-days 365 - Valid for 1 year
+-newkey rsa:2048 - Generate new 2048-bit RSA key
+-keyout - Where to save the private key
+-out - Where to save the certificate
+-subj - Certificate details (Country, State, etc.)
+
+nginx conf file explanation
+nginxevents {
+    worker_connections 1024;
+}
+events block:
+
+Required by NGINX (config won't work without it)
+worker_connections 1024 - How many simultaneous connections each NGINX worker can handle
+For this small project, 1024 is more than enough
+
+
+nginxhttp {
+    include /etc/nginx/mime.types;
+http block:
+
+Contains all web server configuration
+include /etc/nginx/mime.types - Tells NGINX what file types are what (e.g., .html is text/html, .jpg is image/jpeg)
+This file comes with NGINX package
+
+
+nginx    server {
+        listen 443 ssl;
+        listen [::]:443 ssl;
+server block - Defines one virtual server
+
+listen 443 ssl; - Listen on port 443 with SSL for IPv4
+listen [::]:443 ssl; - Same for IPv6
+The ssl keyword enables HTTPS
+
+
+nginx        server_name mmiilpal.42.fr;
+server_name:
+
+What domain this server responds to
+Change this to YOUR login! mmiilpal.42.fr
+
+
+nginx        ssl_certificate /etc/nginx/ssl/nginx.crt;
+        ssl_certificate_key /etc/nginx/ssl/nginx.key;
+        ssl_protocols TLSv1.2 TLSv1.3;
+SSL configuration:
+
+ssl_certificate - Path to your .crt file (public certificate)
+ssl_certificate_key - Path to your .key file (private key)
+ssl_protocols TLSv1.2 TLSv1.3; - ONLY these two protocols allowed ✓
+
+
+nginx        root /var/www/html;
+        index index.php;
+Document root:
+
+root /var/www/html - Where website files are located (this will be the WordPress volume mount point)
+index index.php - Default file to serve (WordPress main file)
+
+
+nginx        location / {
+            try_files $uri $uri/ /index.php?$args;
+        }
+location / block - Handles all requests
+
+try_files $uri $uri/ /index.php?$args; -
+
+First, try to serve the file directly ($uri)
+If not found, try as directory ($uri/)
+If still not found, send to index.php (WordPress handles it)
+
+
+This is how WordPress "pretty URLs" work (e.g., /about instead of /index.php?page=about)
+
+
+nginx        location ~ \.php$ {
+            fastcgi_pass wordpress:9000;
+            fastcgi_index index.php;
+            include fastcgi_params;
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        }
+location ~ \.php$ block - Handles PHP files
+
+~ means "regex match"
+\.php$ matches any file ending in .php
+fastcgi_pass wordpress:9000; - KEY LINE! Forward PHP requests to WordPress container on port 9000
+fastcgi_index index.php - Default PHP file
+include fastcgi_params; - Standard FastCGI parameters (comes with NGINX)
+fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name; - Tells PHP-FPM which file to execute
 ---
 resources:
  - https://docs.docker.com/compose/
@@ -111,6 +209,10 @@ resources:
  - https://nginx.org/en/docs/beginners_guide.html
  - https://www.cloudflare.com/en-gb/learning/ssl/what-is-ssl/
  - https://hoop.dev/blog/what-alpine-debian-actually-does-and-when-to-use-it/
+ - https://www.youtube.com/watch?v=JKxlsvZXG7c
+ - https://www.youtube.com/watch?v=4NB0NDtOwIQ
+
+
 
 
 

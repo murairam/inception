@@ -14,6 +14,18 @@ services:
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_USER=${MYSQL_USER}
     restart: always
+  nginx:
+      container_name: nginx
+      build: ./requirements/nginx
+      ports:
+        - "443:443"
+      networks:
+        - inception_network
+      volumes:
+        - wordpress_data:/var/www/html:ro
+      depends_on:
+        - wordpress
+      restart: always
 
 networks:
   inception_network:
