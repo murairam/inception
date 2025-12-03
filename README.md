@@ -80,7 +80,7 @@ git clone git@github.com:murairam/inception.git
 cd inception
 
 # Create necessary directories
-mkdir -p ~/data/mariadb ~/data/wordpress
+mkdir -p ~/data/mariadb ~/data/wordpress ~/data/static-site
 
 # Set up your .env file and secrets (see Configuration section)
 # Then:
@@ -114,8 +114,9 @@ inception/
         ├── nginx/
         │   ├── Dockerfile
         │   ├── conf/
-        │   │   └── nginx.conf
+        │   │   └── nginx.conf.template
         │   └── tools/
+        │       └── docker-entrypoint.sh
         ├── wordpress/
         │   ├── Dockerfile
         │   ├── conf/
@@ -152,12 +153,15 @@ MYSQL_DATABASE=wordpress
 MYSQL_USER=wpuser
 
 # WordPress Admin User
-WP_ADMIN_USER=admin
-WP_ADMIN_EMAIL=admin@example.com
+WP_ADMIN_USER=boss
+WP_ADMIN_EMAIL=boss@example.com
 
 # WordPress Regular User
-WP_USER=author
-WP_USER_EMAIL=author@example.com
+WP_USER=user
+WP_USER_EMAIL=user@example.com
+
+# Path to data directories
+DATA_PATH=${HOME}/data
 ```
 
 **Note:** The actual passwords are stored in separate secret files (see below) for better security.
@@ -244,24 +248,26 @@ DATA_PATH = $(HOME)/data
 
 # The 'build' target
 build:
-    @mkdir -p $(DATA_PATH)/mariadb $(DATA_PATH)/wordpress
+    @mkdir -p $(DATA_PATH)/mariadb $(DATA_PATH)/wordpress $(DATA_PATH)/static-site
+    @cp -r srcs/requirements/bonus/static-site/www/* $(DATA_PATH)/static-site/
     @docker-compose -f $(COMPOSE_FILE) build
 
-# The 'fclean' target (note: requires sudo for data deletion)
+# The 'fclean' target
 fclean: clean
     @docker system prune -af --volumes
-    @sudo rm -rf $(DATA_PATH)/mariadb/*
-    @sudo rm -rf $(DATA_PATH)/wordpress/*
+    @rm -rf $(DATA_PATH)/mariadb/*
+    @rm -rf $(DATA_PATH)/wordpress/*
+    @rm -rf $(DATA_PATH)/static-site/*
 ```
 
-**Why `sudo` for fclean?**
-Docker creates files as root inside volumes, so you need elevated permissions to delete them.
+**Note about data cleanup:**
+If you encounter permission issues when deleting data directories, you may need to use `sudo` since Docker can create files as root inside volumes.
 
 ---
 
 ## Project Architecture
 
-### How the three containers are connected
+### How the containers are connected
 
 ```
 ┌─────────────────┐
@@ -269,10 +275,12 @@ Docker creates files as root inside volumes, so you need elevated permissions to
 └────────┬────────┘
          │ HTTPS (port 443) ← Only port exposed to host
          ↓
-┌────────────────────┐
-│  NGINX container   │
-│  (Reverse Proxy)   │
-└────────┬───────────┘
+┌────────────────────────────┐
+│  NGINX container           │
+│  (Reverse Proxy)           │
+│  - Routes / → WordPress    │
+│  - Routes /static/ → HTML  │
+└────────┬───────────────────┘
          │ FastCGI (port 9000) ← Internal Docker network
          ↓
 ┌─────────────────────────┐
@@ -291,6 +299,12 @@ Docker creates files as root inside volumes, so you need elevated permissions to
 - **Internal (Docker network):** Ports `9000` and `3306` are only accessible between containers
 - This means: MariaDB and WordPress are NOT accessible from your host machine directly (security!)
 
+**Container Dependencies & Health Checks:**
+- **MariaDB** starts first (no dependencies) with a healthcheck that verifies database connectivity
+- **WordPress** waits for MariaDB to be healthy before starting (depends_on with service_healthy condition)
+- **NGINX** waits for WordPress to be healthy before starting
+- This ensures proper startup order and prevents connection errors
+
 ### Network Explanation
 
 All containers are connected via a **Docker bridge network** called `inception_network`. This allows them to:
@@ -304,7 +318,10 @@ All containers are connected via a **Docker bridge network** called `inception_n
 - Easier to inspect and backup (just regular directories on your host)
 - Simpler for development (you can see the files directly)
 - Required by the 42 project specifications
-- **Downside:** You need `sudo` to clean up because Docker writes as root
+- **Downside:** May need `sudo` to clean up if Docker writes files as root
+
+**Implementation:**
+The volumes use bind mounts configured in docker-compose.yml with `driver_opts`. The `${DATA_PATH}` variable from `.env` (set to `${HOME}/data`) is used as the `device` path, making the configuration portable across different systems.
 
 **Volume 1 - MariaDB** (`~/data/mariadb`):
 - Database files (actual MySQL/MariaDB data)
@@ -317,6 +334,11 @@ All containers are connected via a **Docker bridge network** called `inception_n
 - Plugins
 - Uploaded media (images, videos)
 - `wp-config.php` (WordPress configuration)
+
+**Volume 3 - Static Site** (`~/data/static-site`):
+- Static HTML files
+- Images and assets for the bonus static website
+- Served at `https://mmiilpal.42.fr/static/`
 
 ---
 
@@ -372,6 +394,14 @@ Think of it like a "mailbox" where programs talk to MariaDB locally.
 
 *Without it:* MariaDB can't create the socket → can't start!
 
+**`/etc/my.cnf` - Configuration file**
+
+The custom MariaDB configuration includes:
+- `bind-address=0.0.0.0` - Allows connections from any IP (required for Docker inter-container communication)
+- `port=3306` - Standard MariaDB port
+- `socket=/run/mysqld/mysqld.sock` - Unix socket location for local connections
+- Security is maintained through Docker network isolation (port 3306 is not exposed to the host)
+
 #### MariaDB Entrypoint Script Explained
 
 The entrypoint script (`docker-entrypoint.sh`) does the following:
@@ -405,11 +435,14 @@ Tells `apk` to not store package cache files after installation.
 **SSL Certificate Generation:**
 - `req -x509` - Create a self-signed certificate
 - `-nodes` - No password for the private key
-- `-days 365` - Valid for 1 year
+- `-days 3650` - Valid for 10 years
 - `-newkey rsa:2048` - Generate new 2048-bit RSA key
 - `-keyout` - Where to save the private key
 - `-out` - Where to save the certificate
 - `-subj` - Certificate details (Country, State, etc.)
+
+**Configuration Template:**
+The NGINX configuration uses `nginx.conf.template` with environment variable substitution via `envsubst`. The entrypoint script generates the final `nginx.conf` by replacing `${DOMAIN_NAME}` with your actual domain from the `.env` file.
 
 **⚠️ Security Note:**
 This project uses **self-signed certificates** for development/education purposes. Your browser will show a security warning (this is normal!). For production, you'd use:
@@ -485,8 +518,9 @@ server {
 ```
 
 **Location blocks:**
-- `location /` - Try to serve file → directory → send to index.php
+- `location /` - Try to serve file → directory → send to index.php (WordPress)
 - `location ~ \.php$` - Forward PHP requests to `wordpress:9000` via FastCGI
+- `location /static/` - Serves static website from `/var/www/static/` (bonus service)
 - `fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;` - Tells PHP-FPM which file to execute
 
 </details>
@@ -551,8 +585,8 @@ Environment variables - `no` means PHP-FPM passes environment variables to PHP s
 
 **Step 3: First-Time Setup (if needed)**
 - Create `wp-config.php` with database credentials
-- Install WordPress with admin user
-- Create second user (regular author)
+- Install WordPress with admin user (`boss`)
+- Create second user (role: author, username from `WP_USER` env var)
 - Mark setup as complete
 
 **Step 4: Start PHP-FPM**
@@ -581,10 +615,11 @@ make ps
 - Open your browser to `https://localhost` or `https://mmiilpal.42.fr` (if you added it to `/etc/hosts`)
 - You'll see a security warning (normal for self-signed certificates) - click "Advanced" and proceed
 - You should see your WordPress site!
+- **Bonus:** Access the static site at `https://localhost/static/` or `https://mmiilpal.42.fr/static/`
 
 **3. Login to WordPress admin:**
 - Navigate to `https://localhost/wp-admin`
-- Use the admin credentials from your secrets
+- Use the admin credentials from your secrets (username: `boss`)
 
 **4. Check database connection:**
 ```bash
@@ -638,13 +673,13 @@ sudo lsof -i :443
 ```
 
 ### Permission denied errors
-**Problem:** Can't access `~/data/mariadb` or `~/data/wordpress`
+**Problem:** Can't access `~/data/mariadb`, `~/data/wordpress`, or `~/data/static-site`
 
 **Solutions:**
 ```bash
 # Create directories with proper permissions
-mkdir -p ~/data/mariadb ~/data/wordpress
-chmod 755 ~/data/mariadb ~/data/wordpress
+mkdir -p ~/data/mariadb ~/data/wordpress ~/data/static-site
+chmod 755 ~/data/mariadb ~/data/wordpress ~/data/static-site
 
 # If issues persist, check Docker has permission to access your home directory
 ```
@@ -671,10 +706,15 @@ docker ps -a
 docker inspect mariadb
 ```
 
-### make fclean asks for password
-**Problem:** Prompted for password during cleanup
+### Permission denied when cleaning data
+**Problem:** Can't delete files in `~/data/` directories
 
-**This is normal!** The Makefile uses `sudo` to delete Docker-created files (they're owned by root). Enter your macOS password.
+**Solution:** If Docker created files as root, you may need sudo:
+```bash
+sudo rm -rf ~/data/mariadb/* ~/data/wordpress/* ~/data/static-site/*
+```
+
+Alternatively, run `make fclean` which handles cleanup automatically.
 
 ---
 
