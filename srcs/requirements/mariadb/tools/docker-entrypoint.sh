@@ -1,11 +1,31 @@
 #!/bin/sh
 set -e	# "Exit immediately if any command fails"
 
+# Validate required environment variables
+if [ -z "$MYSQL_DATABASE" ]; then
+	echo "ERROR: MYSQL_DATABASE environment variable is not set"
+	exit 1
+fi
+
+if [ -z "$MYSQL_USER" ]; then
+	echo "ERROR: MYSQL_USER environment variable is not set"
+	exit 1
+fi
+
 if [ ! -d "/var/lib/mysql/mysql" ]; then
 	echo "Initializing database..."
 
 	# Read from SECRETS (passwords)
+	if [ ! -f "/run/secrets/db_root_password" ]; then
+		echo "ERROR: db_root_password secret file not found"
+		exit 1
+	fi
 	DB_ROOT_PWD=$(cat /run/secrets/db_root_password)
+
+	if [ ! -f "/run/secrets/db_password" ]; then
+		echo "ERROR: db_password secret file not found"
+		exit 1
+	fi
 	DB_PWD=$(cat /run/secrets/db_password)
 
 	# Read from ENVIRONMENT (names)
@@ -38,7 +58,7 @@ if [ ! -d "/var/lib/mysql/mysql" ]; then
 
 	# Run initialization SQL
 	echo "Running initialization script..."
-	mariadb -u root <<-EOSQL
+	mariadb -u root <<-'EOSQL'
 		-- Secure the installation
 		DELETE FROM mysql.user WHERE User='';
 		DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');

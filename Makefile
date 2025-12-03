@@ -6,12 +6,13 @@
 #    By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/12/01 18:30:07 by mmiilpal          #+#    #+#              #
-#    Updated: 2025/12/01 18:38:07 by mmiilpal         ###   ########.fr        #
+#    Updated: 2025/12/03 13:57:01 by mmiilpal         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 # Variables
 COMPOSE_FILE = srcs/docker-compose.yml
+ENV_FILE = $(wildcard srcs/.env.local)
 DATA_PATH = $(HOME)/data
 
 # Colors for output
@@ -29,6 +30,9 @@ build:
 	@echo "$(BABYPINK)Building Docker images...$(RESET)"
 	@mkdir -p $(DATA_PATH)/mariadb
 	@mkdir -p $(DATA_PATH)/wordpress
+	@mkdir -p $(DATA_PATH)/static-site
+	@echo "$(BABYPINK)Copying static-site files...$(RESET)"
+	@cp -r srcs/requirements/bonus/static-site/www/* $(DATA_PATH)/static-site/
 	@docker-compose -f $(COMPOSE_FILE) build
 
 # Start containers
@@ -52,6 +56,7 @@ fclean: clean
 	@docker system prune -af --volumes
 	@rm -rf $(DATA_PATH)/mariadb/*
 	@rm -rf $(DATA_PATH)/wordpress/*
+	@rm -rf $(DATA_PATH)/static-site/*
 
 # Rebuild everything
 re: fclean all

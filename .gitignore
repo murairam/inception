@@ -1,6 +1,7 @@
 # Environment variables with sensitive data
 srcs/.env
 .env
+.env.local
 
 # Secrets directory
 secrets/*.txt

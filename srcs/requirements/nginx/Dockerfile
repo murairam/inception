@@ -1,16 +1,16 @@
 FROM alpine:3.21
 
-RUN apk update && apk add --no-cache nginx openssl
+RUN apk update && apk add --no-cache nginx openssl gettext netcat-openbsd
 
 RUN mkdir -p /etc/nginx/ssl
 
-RUN openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
-	-keyout /etc/nginx/ssl/nginx.key \
-	-out /etc/nginx/ssl/nginx.crt \
-	-subj "/C=FR/ST=IDF/L=Paris/O=42/OU=42/CN=mmiilpal.42.fr"
+COPY conf/nginx.conf.template /etc/nginx/nginx.conf.template
+COPY tools/docker-entrypoint.sh /usr/local/bin/
 
-COPY conf/nginx.conf /etc/nginx/nginx.conf
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 443
+
+ENTRYPOINT ["docker-entrypoint.sh"]
 
 CMD ["nginx", "-g", "daemon off;"]

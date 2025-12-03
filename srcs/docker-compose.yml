@@ -15,11 +15,11 @@ services:
       - MYSQL_USER=${MYSQL_USER}
     restart: always
     healthcheck:
-      test: ["CMD", "mariadb", "-u", "root", "-p$$(cat /run/secrets/db_root_password)", "-e", "SELECT 1"]
+      test: ["CMD", "mariadb", "-u", "${MYSQL_USER}", "-p$$(cat /run/secrets/db_password)", "-D", "${MYSQL_DATABASE}", "-e", "SELECT 1"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 40s
 
   nginx:
       container_name: nginx
@@ -30,9 +30,19 @@ services:
         - inception_network
       volumes:
         - wordpress_data:/var/www/html:ro
+        - static_site_data:/var/www/static:ro
+      environment:
+        - DOMAIN_NAME=${DOMAIN_NAME}
       depends_on:
-        - wordpress
+        wordpress:
+          condition: service_healthy
       restart: always
+      healthcheck:
+        test: ["CMD", "nc", "-z", "localhost", "443"]
+        interval: 10s
+        timeout: 5s
+        retries: 3
+        start_period: 10s
 
   wordpress:
     container_name: wordpress
@@ -46,7 +56,8 @@ services:
       - wp_admin_password
       - wp_user_password
     depends_on:
-      - mariadb
+      mariadb:
+        condition: service_healthy
     environment:
       - DOMAIN_NAME=${DOMAIN_NAME}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
@@ -56,15 +67,12 @@ services:
       - WP_USER=${WP_USER}
       - WP_USER_EMAIL=${WP_USER_EMAIL}
     restart: always
-
-  static-site:
-    container_name: static-site
-    build: ./requirements/bonus/static-site
-    ports:
-      - "8081:80"
-    networks:
-      - inception_network
-    restart: always
+    healthcheck:
+      test: ["CMD", "pgrep", "php-fpm"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
 networks:
   inception_network:
@@ -76,14 +84,21 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: ~/data/mariadb
+      device: ${DATA_PATH}/mariadb
 
   wordpress_data:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: ~/data/wordpress
+      device: ${DATA_PATH}/wordpress
+
+  static_site_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH}/static-site
 
 secrets:
   db_root_password:
