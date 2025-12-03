@@ -24,9 +24,14 @@ if [ ! -d "/var/lib/mysql/mysql" ]; then
 
 	# Wait for MariaDB to start
 	echo "Waiting for MariaDB to start..."
-	for i in {30..0}; do
+		for i in $(seq 30 -1 0); do  # More portable than {30..0}
 		if mariadb -u root --skip-password -e 'SELECT 1' &>/dev/null; then
+			echo "MariaDB ready!"
 			break
+		fi
+		if [ "$i" -eq 0 ]; then
+			echo "ERROR: MariaDB failed to start within timeout"
+			exit 1
 		fi
 		sleep 1
 	done

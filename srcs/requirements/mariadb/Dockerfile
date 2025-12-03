@@ -17,5 +17,3 @@ EXPOSE 3306
 ENTRYPOINT [ "docker-entrypoint.sh" ]
 
 CMD [ "mariadbd", "--user=mysql", "--bind-address=0.0.0.0", "--port=3306" ]
-
-
