@@ -15,7 +15,7 @@ services:
       - MYSQL_USER=${MYSQL_USER}
     restart: always
     healthcheck:
-      test: ["CMD", "mariadb", "-u", "${MYSQL_USER}", "-p$$(cat /run/secrets/db_password)", "-D", "${MYSQL_DATABASE}", "-e", "SELECT 1"]
+      test: ["CMD", "sh", "-c", "mariadb -u $$MYSQL_USER -p$$(cat /run/secrets/db_password) -D $$MYSQL_DATABASE -e 'SELECT 1'"]
       interval: 10s
       timeout: 5s
       retries: 5

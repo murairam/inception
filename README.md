@@ -8,6 +8,10 @@
 
 A Docker infrastructure project setting up a small network with NGINX, WordPress, and MariaDB.
 
+**Author:** mmiilpal
+**School:** 42
+**Project:** Inception
+
 ---
 
 ## Table of Contents
@@ -72,7 +76,7 @@ This project teaches Docker fundamentals, networking, and system administration.
 
 ```bash
 # Clone and navigate
-git clone <your-repo-url>
+git clone git@github.com:murairam/inception.git
 cd inception
 
 # Create necessary directories
@@ -112,12 +116,23 @@ inception/
         │   ├── conf/
         │   │   └── nginx.conf
         │   └── tools/
-        └── wordpress/
-            ├── Dockerfile
-            ├── conf/
-            │   └── www.conf
-            └── tools/
-                └── docker-entrypoint.sh
+        ├── wordpress/
+        │   ├── Dockerfile
+        │   ├── conf/
+        │   │   └── www.conf
+        │   └── tools/
+        │       └── docker-entrypoint.sh
+        └── bonus/
+            ├── redis-cache/
+            │   ├── Dockerfile
+            │   └── conf/
+            └── static-site/
+                ├── Dockerfile
+                ├── conf/
+                │   └── nginx.conf
+                └── www/
+                    ├── index.html
+                    └── Elmo.png
 ```
 
 ---
@@ -573,12 +588,16 @@ make ps
 
 **4. Check database connection:**
 ```bash
+# Connect to MariaDB container
 docker exec -it mariadb mariadb -u wpuser -p
 # Enter the password from secrets/db_password.txt
-# Once in:
+
+# Once connected, run these SQL commands:
 mysql> SHOW DATABASES;
 mysql> USE wordpress;
 mysql> SHOW TABLES;
+mysql> SELECT * FROM wp_users;  # See WordPress users
+mysql> EXIT;
 ```
 
 **5. View logs:**
@@ -839,10 +858,9 @@ docker exec -it mariadb mariadb -u wpuser -p
 
 **Additional Resources:**
 - [NGINX Request Processing](https://nginx.org/en/docs/http/request_processing.html)
-
-https://github.com/veggiemonk/awesome-docker
-https://github.com/awesome-selfhosted/awesome-selfhosted
-https://medium.com/the-modern-scientist/caching-a-dive-into-in-memory-and-redis-caches-7b9491a1fa1b
+- [Awesome Docker - Curated List of Docker Resources](https://github.com/veggiemonk/awesome-docker)
+- [Awesome Selfhosted - Self-hosted Software List](https://github.com/awesome-selfhosted/awesome-selfhosted)
+- [Caching: In-Memory and Redis Caches](https://medium.com/the-modern-scientist/caching-a-dive-into-in-memory-and-redis-caches-7b9491a1fa1b)
 
 
 

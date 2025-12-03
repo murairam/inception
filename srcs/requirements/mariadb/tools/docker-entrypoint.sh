@@ -58,7 +58,7 @@ if [ ! -d "/var/lib/mysql/mysql" ]; then
 
 	# Run initialization SQL
 	echo "Running initialization script..."
-	mariadb -u root <<-'EOSQL'
+	mariadb -u root <<-EOSQL
 		-- Secure the installation
 		DELETE FROM mysql.user WHERE User='';
 		DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
