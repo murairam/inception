@@ -6,7 +6,7 @@
 #    By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/12/01 18:30:07 by mmiilpal          #+#    #+#              #
-#    Updated: 2025/12/04 17:38:22 by mmiilpal         ###   ########.fr        #
+#    Updated: 2025/12/04 17:47:16 by mmiilpal         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -32,23 +32,24 @@ build:
 	@mkdir -p $(DATA_PATH)/wordpress
 	@mkdir -p $(DATA_PATH)/static-site
 	@echo "$(BABYPINK)Copying static-site files...$(RESET)"
-	@cp -r srcs/requirements/bonus/static-site/www/* $(DATA_PATH)/static-site/
-	@docker-compose -f $(COMPOSE_FILE) build
+	@cp -r srcs/requirements/bonus/static-site/www/* $(DATA_PATH)/static-site/ 2>/dev/null || true
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) build
 
 # Start containers
 up:
+	@mkdir -p $(DATA_PATH)/mariadb $(DATA_PATH)/wordpress $(DATA_PATH)/static-site
 	@echo "$(BABYPINK)Starting containers...$(RESET)"
-	@docker-compose -f $(COMPOSE_FILE) up -d
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up -d
 
 # Stop containers
 down:
 	@echo "$(BLUE)Stopping containers...$(RESET)"
-	@docker-compose -f $(COMPOSE_FILE) down
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) down
 
 # Clean containers and networks
 clean: down
 	@echo "$(BLUE)Removing containers, networks...$(RESET)"
-	@docker-compose -f $(COMPOSE_FILE) down -v
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) down -v
 
 # Full clean (including volumes data)
 fclean: clean
@@ -63,8 +64,8 @@ re: fclean all
 
 # Show logs
 logs:
-	@docker-compose -f $(COMPOSE_FILE) logs -f
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) logs -f
 
 # Show running containers
 ps:
-	@docker-compose -f $(COMPOSE_FILE) ps
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) ps
