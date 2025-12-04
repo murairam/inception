@@ -6,14 +6,14 @@
 #    By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/12/01 18:30:07 by mmiilpal          #+#    #+#              #
-#    Updated: 2025/12/03 13:57:01 by mmiilpal         ###   ########.fr        #
+#    Updated: 2025/12/04 17:38:22 by mmiilpal         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 # Variables
 COMPOSE_FILE = srcs/docker-compose.yml
-ENV_FILE = $(wildcard srcs/.env.local)
 DATA_PATH = $(HOME)/data
+DOCKER_COMPOSE = docker compose
 
 # Colors for output
 BABYPINK = \033[38;5;218m
