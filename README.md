@@ -902,6 +902,9 @@ docker exec -it mariadb mariadb -u wpuser -p
 - [Awesome Selfhosted - Self-hosted Software List](https://github.com/awesome-selfhosted/awesome-selfhosted)
 - [Caching: In-Memory and Redis Caches](https://medium.com/the-modern-scientist/caching-a-dive-into-in-memory-and-redis-caches-7b9491a1fa1b)
 
+https://wordpress.org/plugins/redis-cache/
+
+https://github.com/AzureAD/microsoft-identity-web/wiki/Set-up-a-Redis-cache-in-Docker
 
 
 ---
