@@ -901,11 +901,133 @@ docker exec -it mariadb mariadb -u wpuser -p
 - [Awesome Docker - Curated List of Docker Resources](https://github.com/veggiemonk/awesome-docker)
 - [Awesome Selfhosted - Self-hosted Software List](https://github.com/awesome-selfhosted/awesome-selfhosted)
 - [Caching: In-Memory and Redis Caches](https://medium.com/the-modern-scientist/caching-a-dive-into-in-memory-and-redis-caches-7b9491a1fa1b)
+- [Redis Cache Plugin for WordPress](https://wordpress.org/plugins/redis-cache/)
+- [Set up a Redis Cache in Docker](https://github.com/AzureAD/microsoft-identity-web/wiki/Set-up-a-Redis-cache-in-Docker)
 
-https://wordpress.org/plugins/redis-cache/
 
-https://github.com/AzureAD/microsoft-identity-web/wiki/Set-up-a-Redis-cache-in-Docker
+---
 
+## Bonus: Redis Cache
+
+### What is Redis?
+
+**Redis (Remote Dictionary Server)** is an in-memory data structure store used as a cache, database, and message broker. In this project, Redis serves as an object cache for WordPress, significantly improving performance by storing frequently accessed data in RAM instead of querying the database repeatedly.
+
+**Key Benefits:**
+- **Speed:** Sub-millisecond response times (RAM is 1000x faster than disk)
+- **Reduced Database Load:** Fewer queries to MariaDB = better performance
+- **Scalability:** Handles thousands of requests per second
+- **Simple:** Key-value storage with automatic expiration
+
+**How It Works:**
+1. WordPress needs data (e.g., blog post)
+2. Check Redis cache first → if found (cache hit), return immediately
+3. If not in cache (cache miss), query MariaDB
+4. Store result in Redis for next request
+5. Subsequent requests skip the database entirely
+
+**Use Cases:**
+- Page caching, session storage, API response caching, real-time analytics
+
+---
+
+### Redis Testing Manual
+
+Use these commands during evaluation to demonstrate Redis is working correctly:
+
+#### 1. Verify Redis Container is Running
+```bash
+docker ps | grep redis
+# Expected: redis container with status "Up"
+```
+
+#### 2. Test Redis Connectivity
+```bash
+docker exec -it redis redis-cli ping
+# Expected output: PONG
+```
+
+If Redis responds with `PONG`, it's alive and accepting connections.
+
+#### 3. Check Cache Keys (Before Using WordPress)
+```bash
+docker exec -it redis redis-cli KEYS '*'
+# Expected: (empty array) or very few keys
+```
+
+#### 4. Generate Cache by Using WordPress
+Open your browser and navigate to:
+- `https://localhost` (or your domain)
+- Click through a few pages, posts, or admin panel
+- This generates cached objects in Redis
+
+#### 5. Verify Cache Was Created
+```bash
+docker exec -it redis redis-cli KEYS '*'
+# Expected: Long list of keys like:
+# 1) "wp:options:alloptions"
+# 2) "wp:posts:1"
+# 3) "wp:terms:1"
+# ... many more
+```
+
+A populated cache confirms WordPress is actively using Redis!
+
+#### 6. Check Redis Memory Usage
+```bash
+docker exec -it redis redis-cli INFO memory | grep used_memory_human
+# Expected: used_memory_human:2.50M (or similar)
+```
+
+Shows how much RAM Redis is consuming for the cache.
+
+#### 7. Monitor Real-Time Activity
+```bash
+docker exec -it redis redis-cli MONITOR
+# Then refresh WordPress in browser
+# Expected: Live stream of Redis commands (GET, SET, DEL)
+```
+
+Press `Ctrl+C` to stop monitoring.
+
+#### 8. Test Cache Performance (Advanced)
+```bash
+# Flush cache
+docker exec -it redis redis-cli FLUSHALL
+
+# Time a WordPress page load (cache miss)
+time curl -k https://localhost > /dev/null
+
+# Time the same page again (cache hit)
+time curl -k https://localhost > /dev/null
+```
+
+The second request should be noticeably faster!
+
+#### Quick Demo Script
+```bash
+# All-in-one verification
+echo "=== Redis Status ==="
+docker ps | grep redis
+
+echo -e "\n=== Redis Ping Test ==="
+docker exec -it redis redis-cli ping
+
+echo -e "\n=== Cache Keys Count ==="
+docker exec -it redis redis-cli DBSIZE
+
+echo -e "\n=== Memory Usage ==="
+docker exec -it redis redis-cli INFO memory | grep used_memory_human
+
+echo -e "\n=== Sample Cache Keys ==="
+docker exec -it redis redis-cli KEYS '*' | head -10
+```
+
+**Expected Results:**
+- ✅ Container running
+- ✅ `PONG` response
+- ✅ Non-zero cache key count (after using WordPress)
+- ✅ Memory usage showing cached data
 
 ---
 
@@ -921,33 +1043,4 @@ Run `make` and visit `https://localhost` - you'll see WordPress running in all i
 ## License
 
 This project is open source and available for educational purposes.
-
-
-Redis Configuration:
-
-What does bind 0.0.0.0 do in redis.conf?
-means that the program will listen to accept all connections from localhost (127.0.0.1), LAN IPs (for example 192.168.x.x) and public IPs (only if they are configured and the firewall allows it)
-What's protected-mode and should you turn it off in Docker?
-it has limitations for working, using priviledged mode enables all capabilitiesto the container, and lifts the limitations enforced by the device cgroup controller
-Do you need a password for Redis in your internal Docker network?
-if i ecpose the port outside my host, it will be open to everyone without a password. so thats why i need a password.
-
-
-
-WordPress Object Cache:
-
-Where should object-cache.php go? (Hint: /var/www/html/wp-content/)
-i need to place them in the wp-content directory of my wordpress installation
-How do you download it? (WP-CLI has a method, or curl from GitHub)
-with wordpress installer plugin?
-What constants go in wp-config.php for Redis?
-WP_REDIS_PATH and WP_REDIS SCHEME ,to configure Redis Object Cache to connect via socket
-
-
-Testing:
-
-How do you verify Redis is working?
-by using redis-cli command-line interface or systemctl command on Linux system. if it is working it will return "PONG"
-Command: docker exec -it redis redis-cli then KEYS *
-How do you check WordPress is using object cache? (WP Admin → Plugins, or check object-cache.php exists)
 using function wp_using_ext_object_cache()

@@ -16,8 +16,10 @@ RUN apk update && apk add --no-cache \
 	php83-phar \
 	php83-tokenizer \
 	php83-redis \
+	php83-ctype \
 	curl \
 	bash \
+	redis \
 	mariadb-client
 
 

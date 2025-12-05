@@ -126,11 +126,6 @@ if [ ! -f /var/www/html/wp-config.php ]; then
 	wp config set WP_REDIS_TIMEOUT 1 --raw --allow-root
 	wp config set WP_REDIS_READ_TIMEOUT 1 --raw --allow-root
 
-	# Add graceful Redis connection handling
-	wp config set WP_REDIS_GRACEFUL yes --raw --allow-root
-	wp config set WP_REDIS_SELECTIVE_FLUSH yes --raw --allow-root
-
-	# Enable Redis object cache
 	echo "Enabling Redis object cache..."
 	wp redis enable --allow-root
 
