@@ -3,6 +3,7 @@ services:
   mariadb:
     container_name: mariadb
     build: ./requirements/mariadb
+    image: mariadb
     networks:
       - inception_network
     volumes:
@@ -24,6 +25,7 @@ services:
   nginx:
       container_name: nginx
       build: ./requirements/nginx
+      image: nginx
       ports:
         - "443:443"
       networks:
@@ -47,6 +49,7 @@ services:
   redis:
     container_name: redis
     build: ./requirements/bonus/redis-cache
+    image: redis
     networks:
       - inception_network
     restart: always
@@ -60,6 +63,7 @@ services:
   wordpress:
     container_name: wordpress
     build: ./requirements/wordpress
+    image: wordpress
     networks:
       - inception_network
     volumes:

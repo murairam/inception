@@ -5,37 +5,41 @@
 ![NGINX](https://img.shields.io/badge/NGINX-009639?style=for-the-badge&logo=nginx&logoColor=white)
 ![MariaDB](https://img.shields.io/badge/MariaDB-003545?style=for-the-badge&logo=mariadb&logoColor=white)
 ![WordPress](https://img.shields.io/badge/WordPress-21759B?style=for-the-badge&logo=wordpress&logoColor=white)
+![42 Project](https://img.shields.io/badge/42-Project-000000?style=for-the-badge)
 
-A Docker infrastructure project setting up a small network with NGINX, WordPress, and MariaDB.
-
-**Author:** mmiilpal
-**School:** 42
-**Project:** Inception
+A Docker infrastructure project setting up a small network with NGINX, WordPress, and MariaDB using Docker Compose.
 
 ---
 
 ## Table of Contents
 
+- [Features](#features)
 - [Prerequisites](#prerequisites)
-- [About This Project](#about-this-project)
 - [Quick Start](#quick-start)
 - [Project Structure](#project-structure)
 - [Configuration](#configuration)
-  - [Environment Variables (.env)](#environment-variables-env)
-  - [Secrets Files](#secrets-files)
 - [How to Use](#how-to-use)
-- [Project Architecture](#project-architecture)
-- [Docker Basics](#docker-basics)
-- [Service-Specific Details](#service-specific-details)
-  - [MariaDB](#mariadb)
-  - [NGINX](#nginx)
-  - [WordPress](#wordpress)
+- [Project Overview](#project-overview)
 - [Testing & Verification](#testing--verification)
 - [Troubleshooting](#troubleshooting)
 - [Useful Docker Commands](#useful-docker-commands)
-- [Core Concepts](#core-concepts)
-- [Questions You Should Be Able to Answer](#questions-you-should-be-able-to-answer)
+- [Documentation](#documentation)
 - [Resources](#resources)
+
+---
+
+## Features
+
+- **Multi-container Docker infrastructure** orchestrated with Docker Compose
+- **NGINX web server** with TLSv1.2/1.3 SSL encryption
+- **WordPress CMS** with PHP-FPM
+- **MariaDB database** for persistent data storage
+- **Redis object cache** for WordPress performance optimization
+- **Static website** served alongside WordPress
+- **Alpine Linux base** for minimal footprint and security
+- **Automatic container restarts** and health checks
+- **Persistent storage** using Docker volumes
+- **Isolated network** with service-based DNS resolution
 
 ---
 
@@ -54,25 +58,9 @@ Your system should have:
 
 ---
 
-## About This Project
-
-This is my implementation of the **Inception project** from 42 School. The goal is to set up a small infrastructure using Docker Compose with the following requirements:
-
-- Each service runs in a dedicated container
-- Containers are built from either Alpine or Debian (I chose Alpine)
-- Custom Dockerfiles for each service (no pre-built images from Docker Hub)
-- Containers must restart automatically on crash
-- TLSv1.2 or TLSv1.3 only for NGINX
-- A Docker network to connect all services
-- Volumes for persistent data storage
-
-This project teaches Docker fundamentals, networking, and system administration.
-
----
-
 ## Quick Start
 
-**TL;DR for the impatient:**
+**For the impatient:**
 
 ```bash
 # Clone and navigate
@@ -97,6 +85,9 @@ make
 inception/
 ├── Makefile
 ├── README.md
+├── EVALUATION.md           # Evaluation commands and checklist
+├── TECHNICAL.md            # Deep technical explanations
+├── ARCHITECTURE.md         # Detailed architecture documentation
 ├── secrets/
 │   ├── db_password.txt
 │   ├── db_root_password.txt
@@ -237,37 +228,14 @@ make fclean
 - `logs` - Follow logs in real-time
 - `ps` - Show running containers
 
-### Makefile Explanation
-
-The Makefile automates common Docker operations:
-
-```makefile
-# Key variables
-COMPOSE_FILE = srcs/docker-compose.yml
-DATA_PATH = $(HOME)/data
-
-# The 'build' target
-build:
-    @mkdir -p $(DATA_PATH)/mariadb $(DATA_PATH)/wordpress $(DATA_PATH)/static-site
-    @cp -r srcs/requirements/bonus/static-site/www/* $(DATA_PATH)/static-site/
-    @docker-compose -f $(COMPOSE_FILE) build
-
-# The 'fclean' target
-fclean: clean
-    @docker system prune -af --volumes
-    @rm -rf $(DATA_PATH)/mariadb/*
-    @rm -rf $(DATA_PATH)/wordpress/*
-    @rm -rf $(DATA_PATH)/static-site/*
-```
-
 **Note about data cleanup:**
 If you encounter permission issues when deleting data directories, you may need to use `sudo` since Docker can create files as root inside volumes.
 
 ---
 
-## Project Architecture
+## Project Overview
 
-### How the containers are connected
+### Container Architecture
 
 ```
 ┌─────────────────┐
@@ -284,15 +252,22 @@ If you encounter permission issues when deleting data directories, you may need 
          │ FastCGI (port 9000) ← Internal Docker network
          ↓
 ┌─────────────────────────┐
-│ WordPress+PHP-FPM       │
-│ container               │
-└────────┬────────────────┘
+│ WordPress+PHP-FPM       │──┐
+│ container               │  │ Redis (port 6379)
+└────────┬────────────────┘  │
+         │                    ↓
+         │              ┌──────────────────┐
+         │              │ Redis container  │
+         │              └──────────────────┘
+         │
          │ MySQL (port 3306) ← Internal Docker network
          ↓
 ┌──────────────────┐
 │ MariaDB container│
 └──────────────────┘
 ```
+
+### Key Architecture Points
 
 **Port Mapping:**
 - **External (host machine):** Only port `443` is exposed to your browser
@@ -305,295 +280,18 @@ If you encounter permission issues when deleting data directories, you may need 
 - **NGINX** waits for WordPress to be healthy before starting
 - This ensures proper startup order and prevents connection errors
 
-### Network Explanation
-
+**Network:**
 All containers are connected via a **Docker bridge network** called `inception_network`. This allows them to:
 - Communicate using container names as hostnames (e.g., `mariadb:3306`, `wordpress:9000`)
 - Stay isolated from the host network (except for the exposed 443 port)
 - Benefit from Docker's built-in DNS resolution
 
-### Volume Contents & Bind Mounts
-
-**Why use bind mounts (`~/data`) instead of Docker volumes?**
-- Easier to inspect and backup (just regular directories on your host)
-- Simpler for development (you can see the files directly)
-- Required by the 42 project specifications
-- **Downside:** May need `sudo` to clean up if Docker writes files as root
-
-**Implementation:**
-The volumes use bind mounts configured in docker-compose.yml with `driver_opts`. The `${DATA_PATH}` variable from `.env` (set to `${HOME}/data`) is used as the `device` path, making the configuration portable across different systems.
-
-**Volume 1 - MariaDB** (`~/data/mariadb`):
-- Database files (actual MySQL/MariaDB data)
-- WordPress posts, pages, users, settings
-- All stored as database tables
-
-**Volume 2 - WordPress** (`~/data/wordpress`):
-- WordPress PHP files
-- Themes
-- Plugins
-- Uploaded media (images, videos)
-- `wp-config.php` (WordPress configuration)
-
-**Volume 3 - Static Site** (`~/data/static-site`):
-- Static HTML files
-- Images and assets for the bonus static website
-- Served at `https://mmiilpal.42.fr/static/`
-
----
-
-## Docker Basics
-
-### What goes in a Dockerfile?
-
-- `FROM` - Base image
-- `RUN` - Execute commands during build
-- `COPY` - Copy files into image
-- `EXPOSE` - Document which ports container uses
-- `CMD` - What runs when container starts
-- `ENTRYPOINT` - Alternative to CMD
-
-**Example:**
-```dockerfile
-ENTRYPOINT = "python"      # The program
-CMD = ["script.py"]        # What to run
-# Together: python script.py
-```
-
-### What is Alpine?
-
-Alpine is a tiny Linux distribution designed for containers:
-- Only ~5MB in size (vs Debian's ~100MB)
-- Uses `apk` package manager (not `apt`)
-- Security-focused
-- Perfect for Docker because it's lightweight
-
----
-
-## Service-Specific Details
-
-### MariaDB
-
-**`/var/lib/mysql` - Database files**
-
-This is where MariaDB stores:
-- All database tables
-- User data
-- WordPress posts/pages
-- Everything persistent
-
-*Without it:* MariaDB can't store any data!
-
-**`/run/mysqld` - Socket file**
-
-This is where MariaDB creates:
-- `mysqld.sock` - A special file for local connections
-- Process ID file
-
-Think of it like a "mailbox" where programs talk to MariaDB locally.
-
-*Without it:* MariaDB can't create the socket → can't start!
-
-**`/etc/my.cnf` - Configuration file**
-
-The custom MariaDB configuration includes:
-- `bind-address=0.0.0.0` - Allows connections from any IP (required for Docker inter-container communication)
-- `port=3306` - Standard MariaDB port
-- `socket=/run/mysqld/mysqld.sock` - Unix socket location for local connections
-- Security is maintained through Docker network isolation (port 3306 is not exposed to the host)
-
-#### MariaDB Entrypoint Script Explained
-
-The entrypoint script (`docker-entrypoint.sh`) does the following:
-
-**On First Run:**
-1. Checks if `/var/lib/mysql/mysql` exists (the system database)
-2. If not, initializes the database with `mariadb-install-db`
-3. Starts MariaDB temporarily in the background
-4. Runs initialization SQL to:
-   - Secure the installation (remove anonymous users, test databases)
-   - Set root password
-   - Create the WordPress database
-   - Create WordPress user with proper permissions
-5. Stops the temporary MariaDB instance
-6. Starts MariaDB as PID 1 using `exec`
-
-**On Subsequent Runs:**
-- Skips initialization (data already exists)
-- Directly starts MariaDB
-
-**Why this approach?**
-- Ensures database is properly set up before WordPress tries to connect
-- Uses `exec` to replace the shell with MariaDB (proper signal handling)
-- Makes the container idempotent (can restart safely)
-
-### NGINX
-
-**`--no-cache` flag:**
-Tells `apk` to not store package cache files after installation.
-
-**SSL Certificate Generation:**
-- `req -x509` - Create a self-signed certificate
-- `-nodes` - No password for the private key
-- `-days 3650` - Valid for 10 years
-- `-newkey rsa:2048` - Generate new 2048-bit RSA key
-- `-keyout` - Where to save the private key
-- `-out` - Where to save the certificate
-- `-subj` - Certificate details (Country, State, etc.)
-
-**Configuration Template:**
-The NGINX configuration uses `nginx.conf.template` with environment variable substitution via `envsubst`. The entrypoint script generates the final `nginx.conf` by replacing `${DOMAIN_NAME}` with your actual domain from the `.env` file.
-
-**⚠️ Security Note:**
-This project uses **self-signed certificates** for development/education purposes. Your browser will show a security warning (this is normal!). For production, you'd use:
-- Let's Encrypt (free, automated)
-- A commercial CA (Certificate Authority)
-- Proper domain validation
-
-#### NGINX Configuration Summary
-
-The NGINX config has three main parts:
-
-**1. Events Block** - Required by NGINX, sets `worker_connections 1024` (more than enough for this project)
-
-**2. HTTP Block** - Contains server configuration and includes MIME types
-
-**3. Server Block** - The actual web server config:
-- **Listen:** Port 443 with SSL (IPv4 and IPv6)
-- **Server name:** Your domain (`mmiilpal.42.fr`)
-- **SSL config:** Certificate paths + `TLSv1.2 TLSv1.3` only ✓
-- **Root:** `/var/www/html` (WordPress files)
-- **Index:** `index.php` (default file)
-
-**Key Location Blocks:**
-
-```nginx
-location / {
-    try_files $uri $uri/ /index.php?$args;
-}
-```
-Tries to serve files directly, otherwise sends to WordPress (enables "pretty URLs")
-
-```nginx
-location ~ \.php$ {
-    fastcgi_pass wordpress:9000;
-    # ... other FastCGI params
-}
-```
-Forwards all `.php` requests to WordPress container on port 9000 via FastCGI
-
-<details>
-<summary>📄 Click to see full NGINX config explanation</summary>
-
-**`events` block:**
-```nginx
-events {
-    worker_connections 1024;
-}
-```
-- Required by NGINX (config won't work without it)
-- `worker_connections 1024` - How many simultaneous connections each NGINX worker can handle
-
-**`http` block:**
-```nginx
-http {
-    include /etc/nginx/mime.types;
-```
-- Contains all web server configuration
-- `include /etc/nginx/mime.types` - Tells NGINX what file types are (e.g., `.html` is `text/html`)
-
-**`server` block:**
-```nginx
-server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    server_name mmiilpal.42.fr;
-
-    ssl_certificate /etc/nginx/ssl/nginx.crt;
-    ssl_certificate_key /etc/nginx/ssl/nginx.key;
-    ssl_protocols TLSv1.2 TLSv1.3;
-
-    root /var/www/html;
-    index index.php;
-```
-
-**Location blocks:**
-- `location /` - Try to serve file → directory → send to index.php (WordPress)
-- `location ~ \.php$` - Forward PHP requests to `wordpress:9000` via FastCGI
-- `location /static/` - Serves static website from `/var/www/static/` (bonus service)
-- `fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;` - Tells PHP-FPM which file to execute
-
-</details>
-
-### WordPress
-
-**What is WordPress?**
-A CMS (Content Management System) - a no-code visual website builder.
-
-**What is FastCGI?**
-A service that helps to handle and run PHP.
-
-**User Permissions:**
-- MariaDB: Runs as `mysql` user (created by mariadb package)
-- PHP-FPM: Runs as `nobody` user (built-in Alpine user with minimal permissions)
-
-#### PHP-FPM Configuration (`www.conf`)
-
-**`[www]`**
-Section header - Names this PHP-FPM pool "www" (you can have multiple pools, but we only need one)
-
-**`user = nobody` / `group = nobody`**
-Security - PHP-FPM worker processes run as the `nobody` user/group (not root). This matches the ownership of `/var/www/html`.
-
-**`listen = 9000`**
-Critical! - PHP-FPM listens on port 9000. This is where NGINX forwards PHP requests to (`fastcgi_pass wordpress:9000;`). Alternative: Could use a Unix socket instead of TCP port, but port 9000 is simpler for Docker networking.
-
-**`listen.owner = nobody` / `listen.group = nobody`**
-Socket permissions - If using Unix socket, set ownership. Not strictly needed for TCP port 9000, but doesn't hurt.
-
-**`pm = dynamic`**
-Process Manager mode - `dynamic` means PHP-FPM automatically adjusts the number of child processes based on demand.
-- Options: `static` (fixed workers), `dynamic` (adjusts based on load), `ondemand` (spawns workers only when needed)
-
-**`pm.max_children = 5`**
-Maximum workers - At most 5 PHP-FPM processes can run simultaneously. For a small project, 5 is plenty.
-
-**`pm.start_servers = 2`**
-Initial workers - Start with 2 PHP-FPM processes when container launches.
-
-**`pm.min_spare_servers = 1` / `pm.max_spare_servers = 3`**
-Spare workers - Keep between 1-3 idle processes ready to handle requests. If all workers are busy, spawn more (up to `max_children`). Think of it like: always keep 1-3 employees on standby, hire more if needed (max 5 total).
-
-**`clear_env = no`**
-Environment variables - `no` means PHP-FPM passes environment variables to PHP scripts. WordPress needs env vars like `MYSQL_DATABASE`, `MYSQL_USER`, etc. from docker-compose. Default is `yes` (clears env vars for security), but we need them for configuration.
-
-#### Dockerfile
-
-**`-F` flag:** Runs PHP-FPM in foreground (like `nginx -g "daemon off;"`)
-
-#### Entrypoint Script
-
-**Step 1: Wait for Database**
-- Keep trying to connect to MariaDB
-- Sleep 3 seconds between attempts
-- Continue only when MariaDB responds
-
-**Step 2: Check if Already Set Up**
-- Look for `wp-config.php` file
-- If exists → skip setup (already done)
-- If missing → do first-time setup
-
-**Step 3: First-Time Setup (if needed)**
-- Create `wp-config.php` with database credentials
-- Install WordPress with admin user (`boss`)
-- Create second user (role: author, username from `WP_USER` env var)
-- Mark setup as complete
-
-**Step 4: Start PHP-FPM**
-- Hand control to PHP-FPM process
-- PHP-FPM runs as PID 1, keeps container alive
-
-**In one sentence:** Wait for database → configure WordPress if needed → start PHP-FPM.
+**Volumes:**
+- **MariaDB** (`~/data/mariadb`) - Database files, WordPress content (posts, users, settings)
+- **WordPress** (`~/data/wordpress`) - WordPress PHP files, themes, plugins, uploaded media
+- **Static Site** (`~/data/static-site`) - Static HTML files and assets
+
+For detailed architecture information, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 
@@ -604,11 +302,7 @@ Once everything is running, verify your setup:
 **1. Check container status:**
 ```bash
 make ps
-# Expected output:
-# NAME                IMAGE               STATUS
-# mariadb            mariadb             Up X minutes
-# wordpress          wordpress           Up X minutes
-# nginx              nginx               Up X minutes
+# Expected: All containers running and healthy
 ```
 
 **2. Access the website:**
@@ -635,18 +329,25 @@ mysql> SELECT * FROM wp_users;  # See WordPress users
 mysql> EXIT;
 ```
 
-**5. View logs:**
+**5. Test Redis cache:**
 ```bash
-make logs
-# Should show all three containers running without errors
+# Verify Redis is running
+docker exec redis redis-cli ping
+# Expected: PONG
+
+# Check cached keys (after using WordPress)
+docker exec redis redis-cli KEYS '*'
+# Expected: Many keys like wp:options:*, wp:posts:*, etc.
 ```
 
 **Common success indicators:**
-- ✅ No container restarts (check `STATUS` in `make ps`)
-- ✅ WordPress installation page appears (or existing site if already set up)
-- ✅ NGINX shows "ready for connections" in logs
-- ✅ MariaDB shows "ready for connections" in logs
-- ✅ WordPress shows "MariaDB is up!" in logs
+- No container restarts (check `STATUS` in `make ps`)
+- WordPress installation page appears (or existing site if already set up)
+- NGINX shows "ready for connections" in logs
+- MariaDB shows "ready for connections" in logs
+- WordPress shows "MariaDB is up!" in logs
+
+For complete evaluation commands, see [EVALUATION.md](EVALUATION.md).
 
 ---
 
@@ -687,7 +388,7 @@ chmod 755 ~/data/mariadb ~/data/wordpress ~/data/static-site
 ### Self-signed certificate warnings
 **Problem:** Browser shows "Your connection is not private"
 
-**This is expected!** Self-signed certificates always trigger this warning. Click "Advanced" → "Proceed to localhost (unsafe)" to continue.
+**This is expected!** Self-signed certificates always trigger this warning. Click "Advanced" and "Proceed to localhost (unsafe)" to continue.
 
 ### Container keeps restarting
 **Problem:** Container repeatedly crashes
@@ -706,16 +407,6 @@ docker ps -a
 docker inspect mariadb
 ```
 
-### Permission denied when cleaning data
-**Problem:** Can't delete files in `~/data/` directories
-
-**Solution:** If Docker created files as root, you may need sudo:
-```bash
-sudo rm -rf ~/data/mariadb/* ~/data/wordpress/* ~/data/static-site/*
-```
-
-Alternatively, run `make fclean` which handles cleanup automatically.
-
 ---
 
 ## Useful Docker Commands
@@ -725,13 +416,9 @@ Alternatively, run `make fclean` which handles cleanup automatically.
 # List all containers (including stopped)
 docker ps -a
 
-# Stop a specific container
+# Stop/start/restart a container
 docker stop nginx
-
-# Start a specific container
 docker start nginx
-
-# Restart a container
 docker restart mariadb
 
 # Remove a container
@@ -765,30 +452,6 @@ docker network inspect inception_network
 docker network inspect inception_network | grep Name
 ```
 
-**Volume Management:**
-```bash
-# List volumes
-docker volume ls
-
-# Inspect volume
-docker volume inspect mariadb_data
-
-# Remove unused volumes
-docker volume prune
-```
-
-**Image Management:**
-```bash
-# List images
-docker images
-
-# Remove image
-docker rmi inception-nginx
-
-# Remove unused images
-docker image prune -a
-```
-
 **System Cleanup:**
 ```bash
 # Remove everything unused (be careful!)
@@ -800,86 +463,44 @@ docker system df
 
 ---
 
-## Core Concepts
+## Documentation
 
-### What is SSL/TLS?
+This project includes detailed documentation split across multiple files:
 
-**SSL (Secure Sockets Layer)** - An encryption-based internet security protocol. It is the predecessor to TLS encryption that is used today.
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Detailed architecture explanations
+  - Network topology and container connections
+  - Volume management and data flow
+  - Port mapping and service dependencies
 
-**TLS (Transport Layer Security)** - The updated version of SSL (since 1999). The two are closely related; the name change signified a change in ownership.
+- **[TECHNICAL.md](TECHNICAL.md)** - Deep technical details
+  - Docker fundamentals
+  - Service-specific configurations (MariaDB, NGINX, WordPress, Redis)
+  - Core concepts (SSL/TLS, PID 1, etc.)
+  - FAQ and technical questions
 
-A website with SSL/TLS has "HTTPS" in the URL instead of "HTTP".
-
-**How it works:**
-- Encrypts data that is transmitted
-- Verifies that the two communicating devices are who they claim to be by initiating a handshake
-- Signs the data to ensure it is not tampered with before reaching the recipient
-
-### Why are `tail -f` and `sleep infinity` prohibited?
-
-- `tail -f` - Continuously reads the end of a file (never exits)
-- `sleep infinity` - Sleeps forever (never exits)
-
-These commands don't allow proper container shutdown and signal handling.
-
-### What is PID 1?
-
-Every process in Linux gets a process ID. The first one is usually allocated to `systemd` or `init`, which manage all other processes.
-
-**In a Docker container:** PID 1 is the main command and the parent of everything in that container. When PID 1 stops, the container stops.
-
----
-
-## Questions You Should Be Able to Answer
-
-**How Docker and docker-compose work:**
-- Understand images vs containers, layers, networking, volumes
-
-**Difference between Docker image with/without docker-compose:**
-- **Without:** manual `docker build`, `docker run`, manual networking
-- **With:** orchestration, automatic networking, dependencies, easier management
-
-**Benefit of Docker vs VMs:**
-- Lighter weight, faster startup, share host kernel, easier portability
-
-**Why this directory structure?**
-- Separates concerns, keeps services independent, follows best practices
-
-**Explain docker-network:**
-- Bridge network allows containers to communicate by name (mariadb:3306, wordpress:9000)
-
-**Why TLSv1.2/1.3 only?**
-- Security - older versions have known vulnerabilities
-
-**How to login to database:**
-```bash
-docker exec -it mariadb mariadb -u wpuser -p
-```
-
-**What happens when you reboot?**
-- Volumes persist data, containers restart automatically (`restart: always`)
-
-**Why exec in entrypoint?**
-- Proper signal handling, makes the final process PID 1
-
-**Why no tail -f?**
-- Not a real service, prevents proper shutdown, hacky workaround
+- **[CHECKLIST.md](CHECKLIST.md)** - Checklist
+  - Complete checklist for project compability with the subject
+  - Verification commands
+  - Expected outputs and success indicators
 
 ---
 
 ## Resources
 
-**Documentation:**
+### Official Documentation
 - [Docker Compose Documentation](https://docs.docker.com/compose/)
 - [Docker Volumes](https://docs.docker.com/engine/storage/volumes/)
 - [NGINX Beginner's Guide](https://nginx.org/en/docs/beginners_guide.html)
+- [NGINX Request Processing](https://nginx.org/en/docs/http/request_processing.html)
+
+### Security & Encryption
 - [Cloudflare - What is SSL?](https://www.cloudflare.com/en-gb/learning/ssl/what-is-ssl/)
 
-**Tutorials & Guides:**
+### Tutorials & Guides
 - [Docker Curriculum](https://docker-curriculum.com/?source=post_page-----cfda98d9f4ac--------------------------------#introduction)
 - [Inception Tutorial (GradeMe)](https://tuto.grademe.fr/inception/#)
 
-**Articles:**
+### Technical Articles
 - [The Linux Process Journey: PID 1 & Init](https://medium.com/@boutnaruthe-linux-process-journey-pid-1-init-60765a069f17)
 - [Docker Processes in a Container](https://cloud.theodo.com/en/blog/docker-processes-container)
 - [Benchmarking Debian vs Alpine as Base Docker Image](https://nickjanetakis.com/blog/benchmarking-debian-vs-alpine-as-a-base-docker-image)
@@ -887,7 +508,12 @@ docker exec -it mariadb mariadb -u wpuser -p
 - [Linux Beyond the Basics: cgroups](https://medium.com/@weidagang/linux-beyond-the-basics-cgroups-f157d93bd755)
 - [Unveiling 42 Network: Inception - A Dive into Docker and Docker Compose](https://medium.com/@afatir.ahmedfatir/unveiling-42-the-network-inception-a-dive-into-docker-and-docker-compose-cfda98d9f4ac)
 
-**Videos:**
+### Redis & Caching
+- [Caching: In-Memory and Redis Caches](https://medium.com/the-modern-scientist/caching-a-dive-into-in-memory-and-redis-caches-7b9491a1fa1b)
+- [Redis Cache Plugin for WordPress](https://wordpress.org/plugins/redis-cache/)
+- [Set up a Redis Cache in Docker](https://github.com/AzureAD/microsoft-identity-web/wiki/Set-up-a-Redis-cache-in-Docker)
+
+### Video Tutorials
 - [Docker Crash Course](https://www.youtube.com/watch?v=pg19Z8LL06w)
 - [Rapid Docker Tutorial](https://www.youtube.com/watch?v=DQdB7wFEygo)
 - [Tutorial about NGINX](https://www.youtube.com/watch?v=iInUBOVeBCc)
@@ -896,151 +522,34 @@ docker exec -it mariadb mariadb -u wpuser -p
 - [Proxy vs Reverse Proxy](https://www.youtube.com/watch?v=4NB0NDtOwIQ)
 - [FastCGI Crash Course](https://www.youtube.com/watch?v=hEXBgQ71rvE)
 
-**Additional Resources:**
-- [NGINX Request Processing](https://nginx.org/en/docs/http/request_processing.html)
+### Community Resources
 - [Awesome Docker - Curated List of Docker Resources](https://github.com/veggiemonk/awesome-docker)
 - [Awesome Selfhosted - Self-hosted Software List](https://github.com/awesome-selfhosted/awesome-selfhosted)
-- [Caching: In-Memory and Redis Caches](https://medium.com/the-modern-scientist/caching-a-dive-into-in-memory-and-redis-caches-7b9491a1fa1b)
-- [Redis Cache Plugin for WordPress](https://wordpress.org/plugins/redis-cache/)
-- [Set up a Redis Cache in Docker](https://github.com/AzureAD/microsoft-identity-web/wiki/Set-up-a-Redis-cache-in-Docker)
-
 
 ---
 
-## Bonus: Redis Cache
+## About This Project
 
-### What is Redis?
+This is my implementation of the **Inception project** from 42 School. The goal is to set up a small infrastructure using Docker Compose with the following requirements:
 
-**Redis (Remote Dictionary Server)** is an in-memory data structure store used as a cache, database, and message broker. In this project, Redis serves as an object cache for WordPress, significantly improving performance by storing frequently accessed data in RAM instead of querying the database repeatedly.
+- Each service runs in a dedicated container
+- Containers are built from either Alpine or Debian (I chose Alpine)
+- Custom Dockerfiles for each service (no pre-built images from Docker Hub)
+- Containers must restart automatically on crash
+- TLSv1.2 or TLSv1.3 only for NGINX
+- A Docker network to connect all services
+- Volumes for persistent data storage
 
-**Key Benefits:**
-- **Speed:** Sub-millisecond response times (RAM is 1000x faster than disk)
-- **Reduced Database Load:** Fewer queries to MariaDB = better performance
-- **Scalability:** Handles thousands of requests per second
-- **Simple:** Key-value storage with automatic expiration
-
-**How It Works:**
-1. WordPress needs data (e.g., blog post)
-2. Check Redis cache first → if found (cache hit), return immediately
-3. If not in cache (cache miss), query MariaDB
-4. Store result in Redis for next request
-5. Subsequent requests skip the database entirely
-
-**Use Cases:**
-- Page caching, session storage, API response caching, real-time analytics
-
----
-
-### Redis Testing Manual
-
-Use these commands during evaluation to demonstrate Redis is working correctly:
-
-#### 1. Verify Redis Container is Running
-```bash
-docker ps | grep redis
-# Expected: redis container with status "Up"
-```
-
-#### 2. Test Redis Connectivity
-```bash
-docker exec -it redis redis-cli ping
-# Expected output: PONG
-```
-
-If Redis responds with `PONG`, it's alive and accepting connections.
-
-#### 3. Check Cache Keys (Before Using WordPress)
-```bash
-docker exec -it redis redis-cli KEYS '*'
-# Expected: (empty array) or very few keys
-```
-
-#### 4. Generate Cache by Using WordPress
-Open your browser and navigate to:
-- `https://localhost` (or your domain)
-- Click through a few pages, posts, or admin panel
-- This generates cached objects in Redis
-
-#### 5. Verify Cache Was Created
-```bash
-docker exec -it redis redis-cli KEYS '*'
-# Expected: Long list of keys like:
-# 1) "wp:options:alloptions"
-# 2) "wp:posts:1"
-# 3) "wp:terms:1"
-# ... many more
-```
-
-A populated cache confirms WordPress is actively using Redis!
-
-#### 6. Check Redis Memory Usage
-```bash
-docker exec -it redis redis-cli INFO memory | grep used_memory_human
-# Expected: used_memory_human:2.50M (or similar)
-```
-
-Shows how much RAM Redis is consuming for the cache.
-
-#### 7. Monitor Real-Time Activity
-```bash
-docker exec -it redis redis-cli MONITOR
-# Then refresh WordPress in browser
-# Expected: Live stream of Redis commands (GET, SET, DEL)
-```
-
-Press `Ctrl+C` to stop monitoring.
-
-#### 8. Test Cache Performance (Advanced)
-```bash
-# Flush cache
-docker exec -it redis redis-cli FLUSHALL
-
-# Time a WordPress page load (cache miss)
-time curl -k https://localhost > /dev/null
-
-# Time the same page again (cache hit)
-time curl -k https://localhost > /dev/null
-```
-
-The second request should be noticeably faster!
-
-#### Quick Demo Script
-```bash
-# All-in-one verification
-echo "=== Redis Status ==="
-docker ps | grep redis
-
-echo -e "\n=== Redis Ping Test ==="
-docker exec -it redis redis-cli ping
-
-echo -e "\n=== Cache Keys Count ==="
-docker exec -it redis redis-cli DBSIZE
-
-echo -e "\n=== Memory Usage ==="
-docker exec -it redis redis-cli INFO memory | grep used_memory_human
-
-echo -e "\n=== Sample Cache Keys ==="
-docker exec -it redis redis-cli KEYS '*' | head -10
-```
-
-**Expected Results:**
-- ✅ Container running
-- ✅ `PONG` response
-- ✅ Non-zero cache key count (after using WordPress)
-- ✅ Memory usage showing cached data
-
----
-
-## Contributing & Screenshots
-
-**Note:** This is an educational project for 42 School. If you're working on the same project, use this as a reference but write your own code - that's how you learn!
-
-**Want to see it in action?**
-Run `make` and visit `https://localhost` - you'll see WordPress running in all its containerized glory!
+This project teaches Docker fundamentals, networking, and system administration.
 
 ---
 
 ## License
 
 This project is open source and available for educational purposes.
-using function wp_using_ext_object_cache()
+
+**Academic Integrity Notice:** This is a 42 School project. If you're working on the same assignment, use this as a reference but write your own code - that's how you learn!
+
+---
+
+**Author:** mmiilpal | **School:** 42 | **Project:** Inception
