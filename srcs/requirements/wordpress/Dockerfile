@@ -14,10 +14,12 @@ RUN apk update && apk add --no-cache \
 	php83-xml \
 	php83-zip \
 	php83-phar \
+	php83-tokenizer \
+	php83-redis \
 	curl \
 	bash \
-	mariadb-client \
-	php83-redis
+	mariadb-client
+
 
 RUN mkdir -p /var/www/html /run/php83
 

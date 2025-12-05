@@ -71,7 +71,24 @@ until mariadb -h mariadb -u"${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABA
 done
 echo "MariaDB is up!"
 
+# Wait for Redis (optional but good practice)
 if [ ! -f /var/www/html/wp-config.php ]; then
+	echo "Waiting for Redis to be ready..."
+	REDIS_RETRY=0
+	MAX_REDIS_RETRIES=30
+	while ! redis-cli -h redis -p 6379 ping >/dev/null 2>&1; do
+		REDIS_RETRY=$((REDIS_RETRY + 1))
+		if [ $REDIS_RETRY -ge $MAX_REDIS_RETRIES ]; then
+			echo "WARNING: Redis did not become available, continuing anyway..."
+			break
+		fi
+		echo "Redis is unavailable - sleeping (attempt $REDIS_RETRY/$MAX_REDIS_RETRIES)"
+		sleep 2
+	done
+	if redis-cli -h redis -p 6379 ping >/dev/null 2>&1; then
+		echo "Redis is up!"
+	fi
+
 	echo "Configuring WordPress..."
 
 	wp config create \
@@ -96,6 +113,26 @@ if [ ! -f /var/www/html/wp-config.php ]; then
 		--role=author \
 		--user_pass="${WP_USER_PASSWORD}" \
 		--allow-root
+
+	# Install and activate Redis Object Cache plugin
+	echo "Installing Redis Object Cache plugin..."
+	wp plugin install redis-cache --activate --allow-root
+
+	# Add Redis configuration to wp-config.php
+	echo "Configuring Redis connection..."
+	wp config set WP_REDIS_HOST "${REDIS_HOST}" --allow-root
+	wp config set WP_REDIS_PORT "${REDIS_PORT}" --raw --allow-root
+	wp config set WP_REDIS_DATABASE 0 --raw --allow-root
+	wp config set WP_REDIS_TIMEOUT 1 --raw --allow-root
+	wp config set WP_REDIS_READ_TIMEOUT 1 --raw --allow-root
+
+	# Add graceful Redis connection handling
+	wp config set WP_REDIS_GRACEFUL yes --raw --allow-root
+	wp config set WP_REDIS_SELECTIVE_FLUSH yes --raw --allow-root
+
+	# Enable Redis object cache
+	echo "Enabling Redis object cache..."
+	wp redis enable --allow-root
 
 	chown -R nobody:nobody /var/www/html
 

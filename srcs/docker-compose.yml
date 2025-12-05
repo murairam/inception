@@ -44,6 +44,19 @@ services:
         retries: 3
         start_period: 10s
 
+  redis:
+    container_name: redis
+    build: ./requirements/bonus/redis-cache
+    networks:
+      - inception_network
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
   wordpress:
     container_name: wordpress
     build: ./requirements/wordpress
@@ -58,6 +71,8 @@ services:
     depends_on:
       mariadb:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       - DOMAIN_NAME=${DOMAIN_NAME}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
@@ -66,13 +81,15 @@ services:
       - WP_ADMIN_EMAIL=${WP_ADMIN_EMAIL}
       - WP_USER=${WP_USER}
       - WP_USER_EMAIL=${WP_USER_EMAIL}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     restart: always
     healthcheck:
-      test: ["CMD", "pgrep", "php-fpm"]
+      test: ["CMD", "pgrep", "php-fpm83"]
       interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 30s
+      start_period: 60s
 
 networks:
   inception_network:

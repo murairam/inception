@@ -923,3 +923,31 @@ Run `make` and visit `https://localhost` - you'll see WordPress running in all i
 This project is open source and available for educational purposes.
 
 
+Redis Configuration:
+
+What does bind 0.0.0.0 do in redis.conf?
+means that the program will listen to accept all connections from localhost (127.0.0.1), LAN IPs (for example 192.168.x.x) and public IPs (only if they are configured and the firewall allows it)
+What's protected-mode and should you turn it off in Docker?
+it has limitations for working, using priviledged mode enables all capabilitiesto the container, and lifts the limitations enforced by the device cgroup controller
+Do you need a password for Redis in your internal Docker network?
+if i ecpose the port outside my host, it will be open to everyone without a password. so thats why i need a password.
+
+
+
+WordPress Object Cache:
+
+Where should object-cache.php go? (Hint: /var/www/html/wp-content/)
+i need to place them in the wp-content directory of my wordpress installation
+How do you download it? (WP-CLI has a method, or curl from GitHub)
+with wordpress installer plugin?
+What constants go in wp-config.php for Redis?
+WP_REDIS_PATH and WP_REDIS SCHEME ,to configure Redis Object Cache to connect via socket
+
+
+Testing:
+
+How do you verify Redis is working?
+by using redis-cli command-line interface or systemctl command on Linux system. if it is working it will return "PONG"
+Command: docker exec -it redis redis-cli then KEYS *
+How do you check WordPress is using object cache? (WP Admin → Plugins, or check object-cache.php exists)
+using function wp_using_ext_object_cache()
