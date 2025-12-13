@@ -1,3 +1,5 @@
+*This project has been created as part of the 42 curriculum by mmiilpal*
+
 # Inception
 
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
@@ -541,6 +543,148 @@ This is my implementation of the **Inception project** from 42 School. The goal 
 - Volumes for persistent data storage
 
 This project teaches Docker fundamentals, networking, and system administration.
+
+---
+
+## Project Description & Design Choices
+
+### Why Docker?
+
+This project uses **Docker containers** instead of traditional virtual machines to create an isolated, reproducible infrastructure. Below are the key architectural decisions and comparisons that shaped this implementation.
+
+### Virtual Machines vs Docker
+
+| Aspect | Virtual Machines | Docker Containers | Our Choice |
+|--------|------------------|-------------------|------------|
+| **Overhead** | Heavy - runs full OS with kernel | Lightweight - shares host kernel | ✅ Docker |
+| **Startup Time** | Minutes (full OS boot) | Seconds (process startup) | ✅ Docker |
+| **Resource Usage** | High - each VM reserves RAM/CPU | Low - uses only what's needed | ✅ Docker |
+| **Isolation** | Complete OS-level isolation | Process-level isolation | ✅ Docker |
+| **Portability** | VM images (large, platform-specific) | Dockerfiles (small, reproducible) | ✅ Docker |
+| **Use Case** | Different OS, strong isolation | Microservices, development | ✅ Docker |
+
+**Why Docker for this project:**
+- Each service (NGINX, WordPress, MariaDB) is a lightweight container
+- Fast startup and rebuild times during development
+- Containers share the host kernel, reducing overhead
+- Easy to reproduce the exact environment using Dockerfiles
+- Perfect for microservices architecture
+
+### Secrets vs Environment Variables
+
+| Aspect | Environment Variables | Docker Secrets | Our Choice |
+|--------|----------------------|----------------|------------|
+| **Storage** | Plain text in .env or docker-compose.yml | Encrypted at rest, mounted in memory | ✅ Secrets |
+| **Visibility** | Visible in `docker inspect` and process list | Not visible in inspect or logs | ✅ Secrets |
+| **Version Control** | Risk of accidental commit | Separate files, gitignored | ✅ Secrets |
+| **Access** | Available as environment variables | Mounted as files in `/run/secrets/` | ✅ Secrets |
+| **Security** | ⚠️ Low - easily exposed | ✅ High - encrypted and secure | ✅ Secrets |
+
+**Our implementation:**
+- All passwords stored in `secrets/` directory
+- Mounted to containers via Docker secrets
+- Never committed to Git (`.gitignore` excludes `secrets/*.txt`)
+- Non-sensitive config (domain, usernames) use environment variables in `.env`
+
+```yaml
+# Example from docker-compose.yml
+secrets:
+  db_password:
+    file: ../secrets/db_password.txt
+  wp_admin_password:
+    file: ../secrets/wp_admin_password.txt
+```
+
+### Docker Network vs Host Network
+
+| Aspect | Host Network | Docker Bridge Network | Our Choice |
+|--------|--------------|----------------------|------------|
+| **Isolation** | No isolation - uses host's network stack | Isolated network namespace | ✅ Bridge |
+| **Port Conflicts** | Can conflict with host services | Internal ports isolated | ✅ Bridge |
+| **Security** | Services exposed to host network | Only exposed ports accessible | ✅ Bridge |
+| **DNS Resolution** | Manual IP management | Automatic service name DNS | ✅ Bridge |
+| **Performance** | Slightly faster (no NAT) | Minimal overhead with NAT | ✅ Bridge |
+
+**Our implementation:**
+- Custom bridge network: `inception_network`
+- Containers communicate using service names (e.g., `mariadb:3306`, `wordpress:9000`)
+- Only NGINX port 443 exposed to host
+- MariaDB and WordPress ports remain internal (secure by default)
+
+```yaml
+# Example inter-container communication
+# WordPress connects to MariaDB using hostname
+DB_HOST=mariadb:3306
+
+# NGINX proxies to WordPress using hostname
+fastcgi_pass wordpress:9000;
+```
+
+**Why we avoid host network:**
+- Subject explicitly forbids `network: host`
+- Breaks container isolation
+- Makes the infrastructure non-portable
+- Exposes all services directly to the host
+
+### Docker Volumes vs Bind Mounts
+
+| Aspect | Docker-Managed Volumes | Bind Mounts | Our Choice |
+|--------|------------------------|-------------|------------|
+| **Location** | Docker's internal directory (`/var/lib/docker/volumes/`) | User-specified host path | ✅ Bind Mounts |
+| **Portability** | More portable across systems | Path must exist on host | ⚠️ Trade-off |
+| **Backup** | Requires Docker commands | Simple directory copy | ✅ Bind Mounts |
+| **Performance** | Optimized by Docker | Direct host filesystem access | ✅ Bind Mounts |
+| **Visibility** | Hidden in Docker internals | Easily browsable at `~/data/` | ✅ Bind Mounts |
+| **Permissions** | Docker manages | Manual setup required | ⚠️ Trade-off |
+
+**Our implementation:**
+- Bind mounts to `~/data/` (as required by subject)
+- Easy access and backup: just copy `~/data/mariadb`, `~/data/wordpress`
+- Data persists even if containers are removed
+- Clear visibility of what's stored
+
+```yaml
+# Example bind mount configuration
+volumes:
+  mariadb_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH}/mariadb
+```
+
+**Subject requirement:**
+> "Your volumes will be available in the /home/login/data folder of the host machine using Docker."
+
+This mandates bind mounts to a specific host path rather than Docker-managed volumes.
+
+### Additional Design Choices
+
+**Base Image: Alpine Linux 3.21**
+- Minimal attack surface (5MB base image vs 124MB for Debian)
+- Faster builds and deployments
+- Security-focused with musl libc
+- apk package manager is simple and fast
+
+**Health Checks:**
+- Every service has a health check defined
+- Ensures services start in correct order
+- WordPress waits for MariaDB to be healthy
+- NGINX waits for WordPress to be healthy
+
+**Single Process per Container (PID 1):**
+- No process managers like `systemd` or `supervisord`
+- Daemons run in foreground mode (`nginx -g "daemon off;"`, `php-fpm83 -F`)
+- No hacky patches like `tail -f` or `sleep infinity`
+- Proper signal handling for graceful shutdown
+
+**Security:**
+- NGINX is the only entrypoint (port 443)
+- TLSv1.2 and TLSv1.3 only (no outdated SSL/TLS)
+- No hardcoded passwords in Dockerfiles
+- Redis runs as non-root user
+- Self-signed certificates for development (would use Let's Encrypt in production)
 
 ---
 

@@ -20,7 +20,7 @@ data/
 *.crt
 *.csr
 
-en.subject.pdf
+en.subject.inception.pdf
 
 # MacOS
 .DS_Store
