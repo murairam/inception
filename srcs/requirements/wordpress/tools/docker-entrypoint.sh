@@ -71,6 +71,15 @@ until mariadb -h mariadb -u"${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABA
 done
 echo "MariaDB is up!"
 
+# Check if WordPress is installed in the volume
+if [ ! -f /var/www/html/wp-settings.php ]; then
+	echo "WordPress files not found in volume. Downloading WordPress..."
+	curl -O https://wordpress.org/latest.tar.gz
+	tar -xzf latest.tar.gz -C /var/www/html --strip-components=1
+	rm latest.tar.gz
+	echo "WordPress downloaded successfully!"
+fi
+
 # Wait for Redis (optional but good practice)
 if [ ! -f /var/www/html/wp-config.php ]; then
 	echo "Waiting for Redis to be ready..."
