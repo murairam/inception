@@ -6,7 +6,7 @@
 #    By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/12/01 18:30:07 by mmiilpal          #+#    #+#              #
-#    Updated: 2025/12/04 17:47:16 by mmiilpal         ###   ########.fr        #
+#    Updated: 2025/12/16 14:48:56 by mmiilpal         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -55,9 +55,9 @@ clean: down
 fclean: clean
 	@echo "$(BLUE)Removing all Docker resources and data...$(RESET)"
 	@docker system prune -af --volumes
-	@rm -rf $(DATA_PATH)/mariadb/*
-	@rm -rf $(DATA_PATH)/wordpress/*
-	@rm -rf $(DATA_PATH)/static-site/*
+	@sudo rm -rf $(DATA_PATH)/mariadb/*
+	@sudo rm -rf $(DATA_PATH)/wordpress/*
+	@sudo rm -rf $(DATA_PATH)/static-site/*
 
 # Rebuild everything
 re: fclean all
