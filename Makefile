@@ -6,7 +6,7 @@
 #    By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/12/01 18:30:07 by mmiilpal          #+#    #+#              #
-#    Updated: 2025/12/17 19:29:27 by mmiilpal         ###   ########.fr        #
+#    Updated: 2025/12/16 14:48:56 by mmiilpal         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -69,4 +69,3 @@ logs:
 # Show running containers
 ps:
 	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) ps
-

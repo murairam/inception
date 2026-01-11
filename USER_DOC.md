@@ -1,56 +1,110 @@
 # User Documentation
 
-## Overview
-
-This Inception project provides a complete web infrastructure stack running on Docker, featuring:
-
-- **WordPress CMS** - Content management system for creating and managing your website
-- **MariaDB Database** - MySQL-compatible database storing WordPress data
-- **NGINX Web Server** - Reverse proxy serving your website over HTTPS (port 443)
-- **Redis Cache** - Performance optimization for WordPress
-- **Static Website** - Simple HTML site accessible at `/static/`
-
-All services run in isolated Docker containers and communicate over a private network.
+This document explains how to use and manage the Inception infrastructure as an end user or administrator.
 
 ---
 
-## Quick Start
+## Services Provided by the Stack
+
+The Inception project provides a complete web infrastructure stack running on Docker, featuring the following services:
+
+### Mandatory Services
+
+- **NGINX Web Server** 
+  - Acts as the reverse proxy and sole entry point to the infrastructure
+  - Serves content over HTTPS (port 443) with TLSv1.2/1.3 encryption
+  - Routes requests to WordPress via FastCGI
+  - Uses self-signed SSL certificates for secure connections
+
+- **WordPress CMS (with PHP-FPM)**
+  - Content management system for creating and managing your website
+  - Runs on PHP-FPM (FastCGI Process Manager)
+  - Accessible through NGINX on port 9000 (internal)
+  - Stores files, themes, plugins, and uploads in persistent volumes
+
+- **MariaDB Database**
+  - MySQL-compatible database system
+  - Stores all WordPress data (posts, pages, users, settings)
+  - Runs on port 3306 (internal, not exposed to host)
+  - Data persists in Docker volumes
+
+### Bonus Services
+
+- **Redis Cache**
+  - Object caching for WordPress to improve performance
+  - Reduces database queries by caching frequently accessed data
+  - Runs on port 6379 (internal)
+
+- **Static Website**
+  - Simple HTML site served by NGINX
+  - Accessible at `/static/` path
+  - Demonstrates multi-site capability
+
+**Architecture Overview:**
+All services run in isolated Docker containers and communicate over a private Docker network called `inception_network`. Only NGINX's port 443 is exposed to the host machine, ensuring security through isolation.
+
+---
+
+## Starting and Stopping the Project
 
 ### Starting the Project
 
-To start all services:
+**To start all services:**
 
 ```bash
 make
 ```
 
-This will:
-1. Create necessary data directories
-2. Build all Docker images
-3. Start all containers in the background
+This command will:
+1. Create necessary data directories (`~/data/mariadb`, `~/data/wordpress`, `~/data/static-site`)
+2. Build all Docker images from Dockerfiles
+3. Start all containers in detached mode (background)
 
-The project will be accessible at:
+**Expected behavior:**
+- Containers start in dependency order (MariaDB → WordPress → NGINX)
+- Health checks ensure each service is ready before the next starts
+- First startup may take 30-60 seconds as databases initialize
+
+**Access points after startup:**
 - **Main WordPress site:** https://mmiilpal.42.fr or https://localhost
-- **WordPress admin:** https://mmiilpal.42.fr/wp-admin
+- **WordPress admin panel:** https://mmiilpal.42.fr/wp-admin
 - **Static site:** https://mmiilpal.42.fr/static/
 
 ### Stopping the Project
 
-To stop all services:
+**To stop all services (preserve data):**
 
 ```bash
 make down
 ```
 
-This stops all containers but preserves your data.
+This stops and removes all containers but preserves all data in volumes.
+
+**To stop and remove everything including data:**
+
+```bash
+make fclean
+```
+
+⚠️ **Warning:** This deletes all data permanently (database, WordPress files, uploads).
+
+**To restart the project:**
+
+```bash
+make re
+```
+
+This performs a full cleanup and rebuild from scratch.
 
 ---
 
-## Accessing the Website
+## Accessing the Website and Administration Panel
 
-### Main Website
+### Accessing the Main Website
 
-Open your browser and navigate to:
+**1. Open your web browser**
+
+**2. Navigate to one of these URLs:**
 ```
 https://mmiilpal.42.fr
 ```
@@ -59,107 +113,331 @@ or
 https://localhost
 ```
 
-**Note:** You'll see a security warning because the site uses a self-signed SSL certificate. This is normal for development. Click "Advanced" and "Proceed to localhost (unsafe)" to continue.
+**3. Handle the SSL certificate warning**
 
-### WordPress Administration Panel
+You will see a security warning because the site uses a self-signed SSL certificate. This is **normal and expected** for development environments.
 
-To access the WordPress admin dashboard:
+- **Chrome/Edge:** Click "Advanced" → "Proceed to localhost (unsafe)"
+- **Firefox:** Click "Advanced" → "Accept the Risk and Continue"
+- **Safari:** Click "Show Details" → "visit this website"
 
-1. Navigate to: https://mmiilpal.42.fr/wp-admin
-2. Login with admin credentials (see "Managing Credentials" section)
-3. You can now manage posts, pages, themes, and plugins
+**Why this happens:**
+The project uses a self-signed SSL certificate generated locally. In production, you would use a certificate from a trusted Certificate Authority (like Let's Encrypt).
 
-### Static Website
+### Accessing the WordPress Administration Panel
+
+**1. Navigate to the admin URL:**
+```
+https://mmiilpal.42.fr/wp-admin
+```
+or
+```
+https://localhost/wp-admin
+```
+
+**2. Accept the SSL certificate warning** (same as above)
+
+**3. Log in with administrator credentials:**
+- **Username:** `boss` (defined in `srcs/.env` as `WP_ADMIN_USER`)
+- **Password:** Found in `secrets/wp_admin_password.txt`
+
+**4. You now have full administrative access to:**
+- Create and edit posts and pages
+- Install and configure themes
+- Install and activate plugins
+- Manage users
+- Configure WordPress settings
+
+### Accessing the Static Website (Bonus)
 
 A simple static HTML site is available at:
 ```
 https://mmiilpal.42.fr/static/
 ```
+or
+```
+https://localhost/static/
+```
+
+This demonstrates NGINX's ability to serve multiple sites from the same server.
 
 ---
 
-## Managing Credentials
+## Locating and Managing Credentials
 
-### Location of Credentials
+### Where Credentials Are Stored
 
-All passwords are stored securely in the `secrets/` directory at the project root:
+All sensitive passwords are stored in the `secrets/` directory at the root of the project. This directory contains plain text files, with **one password per file** and **no newlines**.
 
+**Directory structure:**
 ```
 secrets/
 ├── db_root_password.txt      # MariaDB root password
-├── db_password.txt            # Database user password
-├── wp_admin_password.txt      # WordPress admin password
+├── db_password.txt            # MariaDB user password (for WordPress)
+├── wp_admin_password.txt      # WordPress administrator password
 └── wp_user_password.txt       # WordPress regular user password
 ```
 
-### WordPress Users
+**Viewing credentials:**
+```bash
+# View WordPress admin password
+cat secrets/wp_admin_password.txt
 
-The project creates two WordPress users:
+# View database password
+cat secrets/db_password.txt
+
+# View all secrets
+ls -la secrets/
+```
+
+**Security note:**
+- These files are excluded from Git via `.gitignore`
+- Never commit passwords to version control
+- In production, use proper secret management (e.g., Docker secrets, vault services)
+
+### WordPress User Accounts
+
+The project automatically creates two WordPress users during initialization:
 
 **Administrator Account:**
-- **Username:** boss (defined in srcs/.env as `WP_ADMIN_USER`)
-- **Email:** boss@example.com
+- **Username:** `boss` (configurable in `srcs/.env` as `WP_ADMIN_USER`)
+- **Email:** `boss@example.com` (configurable in `srcs/.env`)
 - **Password:** Located in `secrets/wp_admin_password.txt`
-- **Capabilities:** Full administrative access
+- **Role:** Administrator
+- **Capabilities:** Full site control, install plugins/themes, manage users, modify settings
 
 **Regular User Account:**
-- **Username:** user (defined in srcs/.env as `WP_USER`)
-- **Email:** user@example.com
+- **Username:** `user` (configurable in `srcs/.env` as `WP_USER`)
+- **Email:** `user@example.com` (configurable in `srcs/.env`)
 - **Password:** Located in `secrets/wp_user_password.txt`
-- **Capabilities:** Standard user access
+- **Role:** Author/Contributor
+- **Capabilities:** Create and edit own posts, upload media
 
 ### Database Credentials
 
-**Database Configuration:**
-- **Database name:** wordpress (from srcs/.env)
-- **Database user:** wpuser (from srcs/.env)
-- **User password:** Located in `secrets/db_password.txt`
-- **Root password:** Located in `secrets/db_root_password.txt`
+**MariaDB Configuration:**
+- **Database Name:** `wordpress` (from `srcs/.env` variable `MYSQL_DATABASE`)
+- **Database User:** `wpuser` (from `srcs/.env` variable `MYSQL_USER`)
+- **User Password:** Located in `secrets/db_password.txt`
+- **Root Password:** Located in `secrets/db_root_password.txt`
+- **Host:** `mariadb:3306` (Docker network DNS name)
+
+**Accessing the database manually:**
+```bash
+# Connect as WordPress user
+docker exec -it mariadb mariadb -u wpuser -p
+# Enter password from secrets/db_password.txt
+
+# Connect as root
+docker exec -it mariadb mariadb -u root -p
+# Enter password from secrets/db_root_password.txt
+```
+
+### Managing and Changing Credentials
+
+**To change a password:**
+
+1. **Stop the containers:**
+   ```bash
+   make down
+   ```
+
+2. **Edit the secret file:**
+   ```bash
+   echo "new_password_here" > secrets/wp_admin_password.txt
+   ```
+
+3. **Clean and rebuild** (required for database passwords):
+   ```bash
+   make fclean
+   make
+   ```
+
+**Note:** Changing WordPress user passwords after initial setup requires either:
+- Using WordPress admin panel (Users → Edit User → Set new password)
+- Or a complete rebuild with `make fclean && make`
 
 ---
 
-## Checking Service Status
+## Checking That Services Are Running Correctly
 
-### View Running Containers
+### Quick Health Check
+
+**View all container statuses:**
 
 ```bash
 make ps
 ```
 
-Expected output - all containers should show status "Up" and "(healthy)":
+**Expected output:**
 ```
-NAME        STATUS
-mariadb     Up X minutes (healthy)
-nginx       Up X minutes (healthy)
-wordpress   Up X minutes (healthy)
-redis       Up X minutes (healthy)
+NAME        IMAGE       STATUS
+mariadb     mariadb     Up X minutes (healthy)
+nginx       nginx       Up X minutes (healthy)
+wordpress   wordpress   Up X minutes (healthy)
+redis       redis       Up X minutes (healthy)
 ```
 
-### View Service Logs
+**What to look for:**
+- ✅ `Up` status means container is running
+- ✅ `(healthy)` means health checks are passing
+- ❌ `Restarting` means the container is crashing
+- ❌ `Exited` means the container stopped
 
-To see logs from all services in real-time:
+### Detailed Service Verification
 
+#### 1. Check NGINX (Web Server)
+
+**Test HTTPS connection:**
+```bash
+curl -Ik https://localhost
+```
+
+**Expected output:**
+```
+HTTP/1.1 200 OK
+Server: nginx
+```
+
+**Check NGINX logs:**
+```bash
+docker logs nginx
+```
+
+**Look for:**
+- `nginx: configuration file ... test is successful`
+- No error messages about port binding or SSL certificates
+
+#### 2. Check MariaDB (Database)
+
+**Test database connectivity:**
+```bash
+docker exec mariadb mariadb -u wpuser -p$(cat secrets/db_password.txt) -e "SELECT 1"
+```
+
+**Expected output:**
+```
++---+
+| 1 |
++---+
+| 1 |
++---+
+```
+
+**Check MariaDB logs:**
+```bash
+docker logs mariadb
+```
+
+**Look for:**
+- `mysqld: ready for connections` (appears twice during startup)
+- No errors about permissions or data corruption
+
+#### 3. Check WordPress (Application)
+
+**Verify WordPress is responding:**
+```bash
+curl -Ik https://localhost | grep -i "x-powered-by"
+```
+
+**Expected output:**
+```
+X-Powered-By: PHP/8.2.x
+```
+
+**Check WordPress logs:**
+```bash
+docker logs wordpress
+```
+
+**Look for:**
+- `MariaDB is up!`
+- `WordPress is already installed`
+- No PHP errors or database connection failures
+
+#### 4. Check Redis (Cache) - Bonus
+
+**Test Redis connectivity:**
+```bash
+docker exec redis redis-cli ping
+```
+
+**Expected output:**
+```
+PONG
+```
+
+**Check cached keys (after using WordPress):**
+```bash
+docker exec redis redis-cli KEYS '*' | head -10
+```
+
+**Expected:** Should show WordPress cache keys like `wp:options:*`, `wp:posts:*`
+
+### Monitor All Service Logs in Real-Time
+
+**Follow logs from all containers:**
 ```bash
 make logs
 ```
 
-To view logs from a specific service:
+Press `Ctrl+C` to stop following logs.
 
+**Follow logs from a specific service:**
 ```bash
-docker logs mariadb
-docker logs wordpress
-docker logs nginx
-docker logs redis
+docker logs -f mariadb
+docker logs -f wordpress  
+docker logs -f nginx
+docker logs -f redis
 ```
 
-### Success Indicators
+### Success Indicators Checklist
 
-Your infrastructure is working correctly when:
-- All containers show "Up" status with "(healthy)"
-- NGINX logs show "ready for connections"
-- MariaDB logs show "ready for connections"
-- WordPress site loads at https://localhost
-- You can login to wp-admin
+✅ **Infrastructure is healthy when:**
+- All containers show `Up` and `(healthy)` status
+- NGINX responds with `HTTP/1.1 200 OK` on port 443
+- MariaDB accepts connections and queries
+- WordPress loads at https://localhost
+- WordPress admin panel accessible at https://localhost/wp-admin
+- Redis responds with `PONG` to ping command
+- No containers are restarting repeatedly
+- Logs show no critical errors
+
+❌ **Common warning signs:**
+- Containers showing `Restarting` or `Exited` status
+- Error messages in logs about connection failures
+- HTTP 502/503 errors when accessing the website
+- Database connection errors in WordPress logs
+- Port binding errors in NGINX logs
+
+### Troubleshooting Commands
+
+**Check detailed container status:**
+```bash
+docker ps -a
+```
+
+**Inspect specific container:**
+```bash
+docker inspect mariadb
+```
+
+**Check Docker networks:**
+```bash
+docker network ls
+docker network inspect inception_network
+```
+
+**Check Docker volumes:**
+```bash
+docker volume ls
+docker volume inspect srcs_mariadb_data
+```
+
+**View resource usage:**
+```bash
+docker stats
+```
 
 ---
 

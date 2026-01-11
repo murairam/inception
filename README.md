@@ -9,15 +9,28 @@
 ![WordPress](https://img.shields.io/badge/WordPress-21759B?style=for-the-badge&logo=wordpress&logoColor=white)
 ![42 Project](https://img.shields.io/badge/42-Project-000000?style=for-the-badge)
 
-A Docker infrastructure project setting up a small network with NGINX, WordPress, and MariaDB using Docker Compose.
+---
+
+## Description
+
+The **Inception** project is a system administration exercise that challenges you to set up a small infrastructure composed of different services using Docker Compose. The goal is to virtualize multiple Docker images by creating them in a personal virtual machine, deepening your understanding of containerization, networking, and service orchestration.
+
+This project implements a complete web infrastructure featuring:
+- **NGINX** web server with TLSv1.2/1.3 SSL encryption acting as the sole entry point
+- **WordPress** content management system with PHP-FPM for dynamic content
+- **MariaDB** database for persistent data storage
+- **Redis** cache for WordPress performance optimization (bonus)
+- **Static website** served alongside WordPress (bonus)
+
+All services run in isolated Docker containers built from scratch (no pre-built images from Docker Hub), communicate over a dedicated Docker network, and store data in persistent volumes. The infrastructure demonstrates modern microservices architecture principles while maintaining security through proper isolation and secret management.
 
 ---
 
 ## Table of Contents
 
+- [Description](#description)
+- [Instructions](#instructions)
 - [Features](#features)
-- [Prerequisites](#prerequisites)
-- [Quick Start](#quick-start)
 - [Project Structure](#project-structure)
 - [Configuration](#configuration)
 - [How to Use](#how-to-use)
@@ -27,6 +40,7 @@ A Docker infrastructure project setting up a small network with NGINX, WordPress
 - [Useful Docker Commands](#useful-docker-commands)
 - [Documentation](#documentation)
 - [Resources](#resources)
+- [Project Description & Design Choices](#project-description--design-choices)
 
 ---
 
@@ -60,23 +74,102 @@ Your system should have:
 
 ---
 
-## Quick Start
+## Instructions
 
-**For the impatient:**
+### Prerequisites
+
+Before you start, make sure you have these installed:
+
+- **Docker** (20.10 or higher)
+- **Docker Compose** (v2.0 or higher)
+- **Make** (for running Makefile commands)
+- **Git** (to clone the repository)
+
+Your system should have:
+- At least 2GB of free disk space
+- Sufficient permissions to run Docker commands
+- Port 443 available
+
+### Installation & Setup
+
+**1. Clone and navigate to the project:**
 
 ```bash
-# Clone and navigate
 git clone git@github.com:murairam/inception.git
 cd inception
+```
 
-# Create necessary directories
+**2. Create necessary data directories:**
+
+```bash
 mkdir -p ~/data/mariadb ~/data/wordpress ~/data/static-site
+```
 
-# Set up your .env file and secrets (see Configuration section)
-# Then:
+**3. Configure environment variables:**
+
+Create a `.env` file in the `srcs/` directory:
+
+```bash
+# Domain Configuration
+DOMAIN_NAME=mmiilpal.42.fr
+
+# Database Configuration
+MYSQL_DATABASE=wordpress
+MYSQL_USER=wpuser
+
+# WordPress Admin User
+WP_ADMIN_USER=boss
+WP_ADMIN_EMAIL=boss@example.com
+
+# WordPress Regular User
+WP_USER=user
+WP_USER_EMAIL=user@example.com
+
+# Path to data directories
+DATA_PATH=${HOME}/data
+```
+
+**4. Create secret files:**
+
+Create these files in the `secrets/` directory (one password per file, no newlines):
+
+```bash
+echo "your_root_password" > secrets/db_root_password.txt
+echo "your_db_password" > secrets/db_password.txt
+echo "your_admin_password" > secrets/wp_admin_password.txt
+echo "your_user_password" > secrets/wp_user_password.txt
+```
+
+**5. Build and start the infrastructure:**
+
+```bash
 make
+```
 
-# Access your site at https://localhost
+**6. Access your site:**
+
+Open your browser to `https://localhost` or `https://mmiilpal.42.fr` (you'll need to accept the self-signed certificate warning).
+
+### Compilation & Execution
+
+The project uses a Makefile to simplify Docker operations:
+
+- `make` or `make all` - Build images and start all containers
+- `make build` - Build Docker images only
+- `make up` - Start containers (must build first)
+- `make down` - Stop all containers
+- `make clean` - Stop and remove containers/networks
+- `make fclean` - Full cleanup including volumes and data
+- `make re` - Clean and rebuild everything
+- `make logs` - View container logs in real-time
+- `make ps` - Show running containers
+
+### Stopping the Infrastructure
+
+```bash
+make down  # Stop containers, keep data
+make clean  # Stop and remove containers
+make fclean  # Complete cleanup including data
 ```
 
 ---
@@ -527,6 +620,30 @@ This project includes detailed documentation split across multiple files:
 ### Community Resources
 - [Awesome Docker - Curated List of Docker Resources](https://github.com/veggiemonk/awesome-docker)
 - [Awesome Selfhosted - Self-hosted Software List](https://github.com/awesome-selfhosted/awesome-selfhosted)
+
+### AI Usage in This Project
+
+Artificial Intelligence tools were used throughout this project to enhance development efficiency and code quality:
+
+**Tasks where AI was used:**
+- **Documentation Writing:** AI assisted in structuring and writing comprehensive documentation (README.md, TECHNICAL.md, ARCHITECTURE.md) by suggesting clear explanations of Docker concepts, formatting markdown tables, and organizing content logically
+- **Configuration Optimization:** AI helped optimize Docker configurations, suggesting best practices for NGINX configs, PHP-FPM settings, and MariaDB tuning parameters
+- **Debugging Support:** AI was consulted when troubleshooting container connectivity issues, permission problems, and service health checks
+- **Shell Script Refinement:** AI reviewed and improved the docker-entrypoint.sh scripts for better error handling and signal management
+- **Security Best Practices:** AI provided guidance on implementing proper secret management, TLS configuration, and container security measures
+- **Resource Research:** AI helped find and validate relevant documentation, articles, and tutorials for Docker, NGINX, WordPress, and MariaDB
+
+**Parts of the project involving AI:**
+- All documentation files (README.md, TECHNICAL.md, ARCHITECTURE.md, USER_DOC.md, DEV_DOC.md)
+- Refinement of configuration files (nginx.conf, php.ini, redis.conf)
+- Optimization of entrypoint scripts for proper PID 1 handling
+- Troubleshooting and debugging complex networking issues
+
+**AI tools used:**
+- GitHub Copilot (code suggestions, inline documentation)
+- ChatGPT/Claude (architectural decisions, documentation, debugging assistance)
+
+**Note:** While AI provided significant assistance, all final implementation decisions, testing, and validation were performed manually. The core Dockerfiles, docker-compose.yml, and architectural design were developed with human oversight to ensure they met project requirements.
 
 ---
 
