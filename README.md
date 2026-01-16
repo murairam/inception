@@ -1,35 +1,15 @@
-# README.md
+# Project Title
 
-![Badges]
+[![Project Status](https://img.shields.io/badge/Project%20Status-Complete%20-%2300FF00)](https://www.github.com/murairam/inception)  [![Bonus Services](https://img.shields.io/badge/Bonus%20Services%205%2F5-%2300FF00)](https://www.github.com/murairam/inception)
 
-## 🏆 Project Status
-- All mandatory requirements completed ✅
-- All 5 bonus services implemented and working ✅
+## Description
+
+This project implements all 5 bonus services: Redis Cache, FTP Server, Adminer, Static Website, and cAdvisor. All features are fully implemented and working.
 
 ## Author
-- murairam
 
-... (rest of the content between line 2 and line 46 remains unchanged) ...  
+murairam
 
-### Features
-- Feature 1
-- Feature 2
-...  
-- Redis Cache for WordPress performance optimization ✅
-- FTP Server (vsftpd) for WordPress file management ✅
-- Adminer web interface for database management ✅
-- Static website served alongside WordPress ✅
-- cAdvisor for real-time container monitoring ✅
+## Other Sections
 
-... (rest of the content continues unchanged from line 60 onwards) ...  
-
-### Bonus Services
-- Redis Cache for WordPress performance optimization ✅
-- FTP Server (vsftpd) for WordPress file management ✅
-- Adminer web interface for database management ✅
-- Static website served alongside WordPress ✅
-- cAdvisor for real-time container monitoring ✅
-
-... (rest of the content remains unchanged) ...  
-
-> Note: Updated all references from mmiilpal to murairam.
+...  [Other content of the README remains unchanged] ...
